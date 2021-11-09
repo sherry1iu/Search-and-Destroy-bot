@@ -51,10 +51,8 @@ def move_forward(distance, move_cmd_pub):
     run_movement_loop(time_to_travel, VELOCITY, 0, move_cmd_pub)
 
 
-def rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub):
-    """
-    Rotates in the direction of the specified point
-    """
+def get_distance_angle_between_points(desired_point, current_point, current_orientation):
+    """Gets the distance and angle between two points"""
     difference = [desired_point[0] - current_point[0],
                   desired_point[1] - current_point[1]]
     # find the angle that we need to rotate to
@@ -75,7 +73,17 @@ def rotate_to_point(current_orientation, current_point, desired_point, move_cmd_
     if angle_to_rotate > math.pi:
         angle_to_rotate = angle_to_rotate - ( 2 * math.pi )
 
-    # rotate to the angle
+    # find the length that we need to travel
+    length = math.sqrt(difference[0] ** 2 + difference[1] ** 2)
+
+    return length, angle_to_rotate
+
+
+def rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub):
+    """
+    Rotates in the direction of the specified point
+    """
+    length, angle_to_rotate = get_distance_angle_between_points(desired_point, current_point, current_orientation)
     rotate(angle_to_rotate, move_cmd_pub)
 
 
@@ -84,11 +92,7 @@ def drive_to_point(current_point, desired_point, move_cmd_pub):
     Drives to the point
     """
     # find the difference between the current point and the next one
-    difference = [desired_point[0] - current_point[0],
-                  desired_point[1] - current_point[1]]
-
-    # find the length that we need to travel
-    length = math.sqrt(difference[0] ** 2 + difference[1] ** 2)
+    length, angle_to_rotate = get_distance_angle_between_points(desired_point, current_point, 0)
     move_forward(length, move_cmd_pub)
 
 
