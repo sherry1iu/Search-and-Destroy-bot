@@ -3,13 +3,16 @@
 # Author: Elliot Potter, CS 81, Dartmouth College
 # Date: 11/9/2021
 
+import sys
+sys.path.append('../../')
+
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist  # message type for velocity command.
 from std_msgs.msg import String # message type for rotation_warning
 import tf  # library for transformations.
 
-from get_test_json_graph import get_test_json_graph
-from route_planner import RoutePlanner
+from src.patroller.get_test_json_graph import get_test_json_graph
+from src.patroller.route_planner import RoutePlanner
 from src.utilities.get_current_position import get_current_position_map, translate_point_between_frames
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph

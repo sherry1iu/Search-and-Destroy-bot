@@ -1,4 +1,7 @@
-from get_test_json_graph import get_test_nodes_to_visit
+import sys
+sys.path.append('../../')
+
+from src.patroller.get_test_json_graph import get_test_nodes_to_visit
 from src.utilities.move_to_point import get_distance_angle_between_points
 
 
