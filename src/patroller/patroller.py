@@ -1,32 +1,46 @@
+#!/usr/bin/env python
+
+# Author: Elliot Potter, CS 81, Dartmouth College
+# Date: 11/9/2021
+
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist  # message type for velocity command.
 from std_msgs.msg import String # message type for rotation_warning
 import tf  # library for transformations.
 
-from patroller.route_planner import RoutePlanner
-from utilities.get_current_position import get_current_position_map, translate_point_between_frames
-from utilities.move_to_point import move_to_point
+from get_test_json_graph import get_test_json_graph
+from route_planner import RoutePlanner
+from src.utilities.get_current_position import get_current_position_map, translate_point_between_frames
+from src.utilities.move_to_point import move_to_point
+from src.utilities.parse_graph import parse_json_graph
 
 FREQUENCY = 10
+
 
 class Patroller:
     """Patrols the graph, looking for objects to pursue
     """
 
-    def __init__(self, is_live):
+    def __init__(self, is_live, is_test_mode):
         """Initialization function."""
-        self.mode = "initializing"
-        self.is_on_graph = False
+        if is_test_mode:
+            self.mode = "patrolling"
+            self.is_on_graph = True
+            self.raw_graph_string = get_test_json_graph()
+
+        else:
+            self.mode = "initializing"
+            self.is_on_graph = False
+
+            # the JSON string containing the graph; we get this from the graph solving service
+            self.raw_graph_string = None
 
         # callback and publisher for mode switching
         self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
         self.mode_publisher = rospy.Subscriber("mode", String, queue_size=1)
 
         # whether we should re-do the planned patrol route
-        self.should_plan = False
-
-        # the JSON string containing the graph; we get this from the graph solving service
-        self.raw_graph_string = None
+        self.should_plan = True
 
         self.move_cmd_pub = rospy.Publisher("cmd_vel", Twist, queue_size=1)
         self.transform_listener = tf.TransformListener()
@@ -37,6 +51,10 @@ class Patroller:
         self.edge_dictionary = None
         # a queue of nodes in the graph to visit
         self.nodes_to_visit = []
+
+        # if in test mode, we will just outright call the parsing function
+        if is_test_mode:
+            parse_json_graph(self.raw_graph_string)
 
     def mode_callback(self, msg):
         """The callback for switching modes"""
@@ -103,7 +121,7 @@ if __name__ == "__main__":
     rospy.init_node("patroller")
 
     # 2nd. Creation of the class with relevant publishers/subscribers.
-    patroller = Patroller(is_live=False)
+    patroller = Patroller(is_live=False, is_test_mode=True)
 
     # 3rd loop.
     patroller.main()

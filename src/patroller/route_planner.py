@@ -1,4 +1,5 @@
-from utilities.move_to_point import get_distance_angle_between_points
+from get_test_json_graph import get_test_nodes_to_visit
+from src.utilities.move_to_point import get_distance_angle_between_points
 
 
 class RoutePlanner:
@@ -27,3 +28,4 @@ class RoutePlanner:
 
     def find_traversal(self):
         """Finds an efficient traversal of the graph such that all edges are traversed at least once"""
+        return get_test_nodes_to_visit()
