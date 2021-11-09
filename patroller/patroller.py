@@ -1,6 +1,11 @@
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist  # message type for velocity command.
 from std_msgs.msg import String # message type for rotation_warning
+import tf  # library for transformations.
+
+from patroller.route_planner import RoutePlanner
+from utilities.get_current_position import get_current_position_map, translate_point_between_frames
+from utilities.move_to_point import move_to_point
 
 FREQUENCY = 10
 
@@ -23,6 +28,9 @@ class Patroller:
         # the JSON string containing the graph; we get this from the graph solving service
         self.raw_graph_string = None
 
+        self.move_cmd_pub = rospy.Publisher("cmd_vel", Twist, queue_size=1)
+        self.transform_listener = tf.TransformListener()
+
         # the nodes in the graph
         self.node_dictionary = None
         # the edges in the graph
@@ -32,7 +40,8 @@ class Patroller:
 
     def mode_callback(self, msg):
         """The callback for switching modes"""
-        if msg.data is "patrolling":
+        if msg.data is "patrolling" and self.mode is not "patrolling":
+            # we will want to re-plan, because we may be at a new location on the graph
             self.should_plan = True
         self.mode = msg.data
 
@@ -45,6 +54,32 @@ class Patroller:
 
     def plan(self):
         """Makes a plan for traversing the graph"""
+        trans = get_current_position_map(self.transform_listener)
+        planner = RoutePlanner(
+            node_dictionary=self.node_dictionary,
+            edge_dictionary=self.edge_dictionary,
+            current_location={"x": trans.x, "y": trans.y}
+        )
+        self.nodes_to_visit = planner.find_traversal()
+
+    def execute_plan(self):
+        """Executes the plan for traversing the graph"""
+        if len(self.nodes_to_visit) is 0:
+            # re-plan if we just traversed the entire graph
+            self.plan()
+
+        next_node = self.nodes_to_visit.pop(0)
+        next_node_in_base_link = translate_point_between_frames(
+            point=next_node,
+            frame1="map",
+            frame2="base_link",
+            transform_listener=self.transform_listener
+        )
+        move_to_point(current_point={"x": 0, "y": 0},
+                      current_orientation=0,
+                      desired_point=next_node_in_base_link,
+                      move_cmd_pub=self.move_cmd_pub
+                      )
 
     def main(self):
         """Loops; triggers patrolling if mode is patrolling"""
@@ -57,6 +92,9 @@ class Patroller:
                     self.is_on_graph = True
 
                 if self.should_plan is True:
+                    self.plan()
+                else:
+                    self.execute_plan()
 
             rate.sleep()
 
