@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+
+# Author: Elliot Potter, CS 81, Dartmouth College
+# Date: 11/9/2021
+
+
 import rospy
 import tf
 

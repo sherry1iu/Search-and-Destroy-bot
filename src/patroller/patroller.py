@@ -59,9 +59,13 @@ class Patroller:
 
         # if in test mode, we will just outright call the parsing function
         if is_test_mode:
-            parse_json_graph(self.raw_graph_string)
+            self.raw_graph_callback(self.raw_graph_string)
 
         rospy.sleep(2)
+
+    def raw_graph_callback(self, raw_graph_string):
+        """Callback for parsing the raw graph created by another node"""
+        self.node_dictionary, self.edge_dictionary = parse_json_graph(raw_graph_string)
 
     def mode_callback(self, msg):
         """The callback for switching modes"""
@@ -83,7 +87,7 @@ class Patroller:
         planner = RoutePlanner(
             node_dictionary=self.node_dictionary,
             edge_dictionary=self.edge_dictionary,
-            current_location={"x": trans.x, "y": trans.y}
+            current_location={"x": trans[0], "y": trans[1]}
         )
         self.nodes_to_visit = planner.find_traversal()
 
