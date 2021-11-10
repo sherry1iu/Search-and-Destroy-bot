@@ -1,10 +1,14 @@
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist # message type for velocity command.
 import math
+import tf
+
+from src.utilities.get_current_position import get_current_position
 
 FREQUENCY = 10
 VELOCITY = 0.2 #m/s
 ANGULAR_VELOCITY = 0.5 #radians / sec
+ROTATION_ACCURACY_THRESHOLD = 0.1 # the tolerable rotation inaccuracy in radians
 
 
 def move(linear_vel, angular_vel, move_cmd_pub):
@@ -27,6 +31,8 @@ def run_movement_loop(movement_time, linear_vel, angular_vel, move_cmd_pub):
 
         move(linear_vel, angular_vel, move_cmd_pub)
         rate.sleep()
+    # stop when we've finished with the movement
+    move(0, 0, move_cmd_pub)
 
 
 def rotate(angle_to_rotate, move_cmd_pub):
@@ -40,7 +46,7 @@ def rotate(angle_to_rotate, move_cmd_pub):
     if reverse_traverse_direction:
         time_to_rotate = -time_to_rotate
         angular_velocity = -angular_velocity
-    run_movement_loop(time_to_rotate, 0, angular_velocity)
+    run_movement_loop(time_to_rotate, 0, angular_velocity, move_cmd_pub)
 
 
 def move_forward(distance, move_cmd_pub):
@@ -52,7 +58,7 @@ def move_forward(distance, move_cmd_pub):
 
 
 def get_distance_angle_between_points(desired_point, current_point, current_orientation):
-    """Gets the distance and angle between two points"""
+    """Gets the distance and angle between two points; points are in tuple/list notation"""
     difference = [desired_point[0] - current_point[0],
                   desired_point[1] - current_point[1]]
     # find the angle that we need to rotate to
@@ -76,15 +82,28 @@ def get_distance_angle_between_points(desired_point, current_point, current_orie
     # find the length that we need to travel
     length = math.sqrt(difference[0] ** 2 + difference[1] ** 2)
 
-    return length, angle_to_rotate
+    return length, angle_to_rotate, angle
 
 
-def rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub):
+def rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub, transform_listener):
     """
     Rotates in the direction of the specified point
     """
-    length, angle_to_rotate = get_distance_angle_between_points(desired_point, current_point, current_orientation)
+    length, angle_to_rotate, target_angle = get_distance_angle_between_points(
+        desired_point,
+        current_point,
+        current_orientation
+    )
+    print("Angle to rotate:")
+    print(angle_to_rotate)
+    print("\n")
     rotate(angle_to_rotate, move_cmd_pub)
+    trans, rot = get_current_position("map", "base_link", transform_listener)
+    yaw = tf.transformations.euler_from_quaternion(rot)[2]
+
+    # if we're not yet at the desired angle, call recursively until we are
+    if abs(target_angle - yaw) > ROTATION_ACCURACY_THRESHOLD:
+        rotate_to_point(yaw, current_point, desired_point, move_cmd_pub, transform_listener)
 
 
 def drive_to_point(current_point, desired_point, move_cmd_pub):
@@ -92,11 +111,11 @@ def drive_to_point(current_point, desired_point, move_cmd_pub):
     Drives to the point
     """
     # find the difference between the current point and the next one
-    length, angle_to_rotate = get_distance_angle_between_points(desired_point, current_point, 0)
+    length, angle_to_rotate, target_angle = get_distance_angle_between_points(desired_point, current_point, 0)
     move_forward(length, move_cmd_pub)
 
 
-def move_to_point(current_point, current_orientation, desired_point, move_cmd_pub):
+def move_to_point(current_point, current_orientation, desired_point, move_cmd_pub, transform_listener):
     """Moves the robot from the current point to the desired point"""
-    rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub)
+    rotate_to_point(current_orientation, current_point, desired_point, move_cmd_pub, transform_listener)
     drive_to_point(current_point, desired_point, move_cmd_pub)

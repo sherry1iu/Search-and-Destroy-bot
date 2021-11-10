@@ -22,7 +22,11 @@ class RoutePlanner:
 
         for _id in self.node_dictionary:
             temp_target_point = [self.node_dictionary[_id]["x"], self.node_dictionary[_id]["y"]]
-            length, angle_to_rotate = get_distance_angle_between_points(temp_target_point, temp_current_loc, 0)
+            length, angle_to_rotate, target_angle = get_distance_angle_between_points(
+                temp_target_point,
+                temp_current_loc,
+                0
+            )
             if closest_node is None or length < closest_node_distance:
                 closest_node_distance = length
                 closest_node = self.node_dictionary[_id]

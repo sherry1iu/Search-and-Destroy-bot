@@ -14,7 +14,7 @@ import tf  # library for transformations.
 
 from src.patroller.get_test_json_graph import get_test_json_graph
 from src.patroller.route_planner import RoutePlanner
-from src.utilities.get_current_position import get_current_position_map, translate_point_between_frames
+from src.utilities.get_current_position import get_current_position, translate_point_between_frames
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph
 
@@ -83,39 +83,47 @@ class Patroller:
 
     def plan(self):
         """Makes a plan for traversing the graph"""
-        trans = get_current_position_map(self.transform_listener)
+        # gets the current transformation between the base_link and map reference frames
+        trans = get_current_position("map", "base_link", self.transform_listener)[0]
         planner = RoutePlanner(
             node_dictionary=self.node_dictionary,
             edge_dictionary=self.edge_dictionary,
             current_location={"x": trans[0], "y": trans[1]}
         )
         self.nodes_to_visit = planner.find_traversal()
+        self.should_plan = False
 
     def execute_plan(self):
         """Executes the plan for traversing the graph"""
         if len(self.nodes_to_visit) is 0:
             # re-plan if we just traversed the entire graph
-            self.plan()
+            print("Re-patrolling the graph")
+            return
+            # self.plan()
 
         next_node = self.nodes_to_visit.pop(0)
-        next_node_in_base_link = translate_point_between_frames(
-            point=next_node,
-            frame1="map",
-            frame2="base_link",
-            transform_listener=self.transform_listener
-        )
-        move_to_point(current_point={"x": 0, "y": 0},
-                      current_orientation=0,
-                      desired_point=next_node_in_base_link,
-                      move_cmd_pub=self.move_cmd_pub
+        trans, rot = get_current_position("map", "base_link", self.transform_listener)
+        yaw = tf.transformations.euler_from_quaternion(rot)[2]
+
+        print("Next node:")
+        print(next_node)
+        print("Current node:")
+        print(trans)
+        print("Orientation:")
+        print(yaw)
+        print("\n")
+
+        move_to_point(current_point=trans,
+                      current_orientation=yaw,
+                      desired_point=[next_node["x"], next_node["y"]],
+                      move_cmd_pub=self.move_cmd_pub,
+                      transform_listener=self.transform_listener
                       )
 
     def main(self):
         """Loops; triggers patrolling if mode is patrolling"""
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
         while not rospy.is_shutdown():
-            print(self.mode)
-
             if self.mode is "patrolling":
                 # if we haven't arrived on the graph yet, we will use the Restorer to get us there
                 if not self.is_on_graph:
@@ -123,8 +131,10 @@ class Patroller:
                     self.is_on_graph = True
 
                 if self.should_plan is True:
+                    print("Planning...")
                     self.plan()
                 else:
+                    print("Executing plan")
                     self.execute_plan()
 
             rate.sleep()

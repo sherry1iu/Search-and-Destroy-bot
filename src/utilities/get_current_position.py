@@ -3,10 +3,10 @@ import rospy  # module for ROS APIs
 import tf  # library for transformations.
 
 
-def get_current_position_map(transform_listener):
+def get_current_position(frame2, frame1, transform_listener):
     time = rospy.get_rostime()
-    transform_listener.waitForTransform('map', 'base_link', time, rospy.Duration(0.2))
-    (trans, rot) = transform_listener.lookupTransform('map', 'base_link', time)
+    transform_listener.waitForTransform(frame2, frame1, time, rospy.Duration(0.2))
+    (trans, rot) = transform_listener.lookupTransform(frame2, frame1, time)
     return trans, rot
 
 
