@@ -4,6 +4,7 @@
 # Date: 11/9/2021
 
 import sys
+
 sys.path.append('../../')
 
 import rospy  # module for ROS APIs
@@ -30,6 +31,7 @@ class Patroller:
             self.mode = "patrolling"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
+            # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
             self.mode = "initializing"
@@ -58,6 +60,8 @@ class Patroller:
         # if in test mode, we will just outright call the parsing function
         if is_test_mode:
             parse_json_graph(self.raw_graph_string)
+
+        rospy.sleep(2)
 
     def mode_callback(self, msg):
         """The callback for switching modes"""
@@ -106,6 +110,8 @@ class Patroller:
         """Loops; triggers patrolling if mode is patrolling"""
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
         while not rospy.is_shutdown():
+            print(self.mode)
+
             if self.mode is "patrolling":
                 # if we haven't arrived on the graph yet, we will use the Restorer to get us there
                 if not self.is_on_graph:
