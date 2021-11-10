@@ -12,6 +12,10 @@ module.
 
 ### patroller
 
+### Camera
+
+### Chaser
+
 ### restorer
 
 ### Testing:
