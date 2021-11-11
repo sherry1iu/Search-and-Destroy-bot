@@ -42,7 +42,7 @@ class Patroller:
 
         # callback and publisher for mode switching
         self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
-        self.mode_publisher = rospy.Subscriber("mode", String, queue_size=1)
+        self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
 
         # whether we should re-do the planned patrol route
         self.should_plan = True
@@ -68,6 +68,7 @@ class Patroller:
         self.node_dictionary, self.edge_dictionary = parse_json_graph(raw_graph_string)
 
     def mode_callback(self, msg):
+        print(msg)
         """The callback for switching modes"""
         if msg.data is "patrolling" and self.mode is not "patrolling":
             # we will want to re-plan, because we may be at a new location on the graph
@@ -98,6 +99,7 @@ class Patroller:
         if len(self.nodes_to_visit) is 0:
             # re-plan if we just traversed the entire graph
             print("Re-patrolling the graph")
+            self.should_plan = True
             return
             # self.plan()
 
@@ -124,9 +126,10 @@ class Patroller:
         """Loops; triggers patrolling if mode is patrolling"""
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
         while not rospy.is_shutdown():
-            if self.mode is "patrolling":
+            if self.mode == "patrolling":
                 # if we haven't arrived on the graph yet, we will use the Restorer to get us there
                 if not self.is_on_graph:
+                    print("We are not on the graph. Restoring...")
                     self.mode_publisher("restoring")
                     self.is_on_graph = True
 

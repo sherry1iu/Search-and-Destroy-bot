@@ -41,7 +41,7 @@ class Restorer:
 
         # callback and publisher for mode switching
         self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
-        self.mode_publisher = rospy.Subscriber("mode", String, queue_size=1)
+        self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
 
         # Callback for the occupancy grid
         self.grid_subscriber = rospy.Subscriber("map", OccupancyGrid, self.grid_callback)
@@ -81,7 +81,7 @@ class Restorer:
             self.should_plan = True
         self.mode = msg.data
 
-    def mode_publisher(self, mode):
+    def publish_mode(self, mode):
         """The publisher for switching modes"""
         self.mode = mode
         msg = String()
@@ -131,8 +131,9 @@ class Restorer:
     def restore(self):
         """Executes the plan for returning to the graph"""
         if len(self.path_points_to_visit) is 0:
-            # re-plan if we just traversed the entire graph
-            print("Re-patrolling the graph")
+            # if we've run out of points, we are now on the graph
+            self.publish_mode("patrolling")
+            print("Patrolling now...")
             return
             # self.plan()
 

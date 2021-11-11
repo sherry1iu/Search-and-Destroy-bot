@@ -168,7 +168,9 @@ class BFS:
         print ("Minimizing the path")
 
         i_max = len(raw_path)
-        while i_max > 0 and not rospy.is_shutdown():
+        if i_max is 1:
+            new_path.append(raw_path[0])
+        while i_max > 1 and not rospy.is_shutdown():
             # starting from 0, going to i_max, we keep incrementing until the lower point is accessible
             # from the point at i_max
             for i in range(i_max - 1):
