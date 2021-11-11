@@ -28,7 +28,7 @@ class Patroller:
     def __init__(self, is_live, is_test_mode):
         """Initialization function."""
         if is_test_mode:
-            self.mode = "patrolling"
+            self.mode = "restoring"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
@@ -105,13 +105,13 @@ class Patroller:
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         yaw = tf.transformations.euler_from_quaternion(rot)[2]
 
-        print("Next node:")
-        print(next_node)
-        print("Current node:")
-        print(trans)
-        print("Orientation:")
-        print(yaw)
-        print("\n")
+        # print("Next node:")
+        # print(next_node)
+        # print("Current node:")
+        # print(trans)
+        # print("Orientation:")
+        # print(yaw)
+        # print("\n")
 
         move_to_point(current_point=trans,
                       current_orientation=yaw,
@@ -131,10 +131,10 @@ class Patroller:
                     self.is_on_graph = True
 
                 if self.should_plan is True:
-                    print("Planning...")
+                    print("Planning patrol path...")
                     self.plan()
                 else:
-                    print("Executing plan")
+                    print("Executing patrol path plan")
                     self.execute_plan()
 
             rate.sleep()

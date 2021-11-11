@@ -14,7 +14,7 @@ module.
 
 ### restorer
 
-### Testing:
+## Testing:
 If you have a working setup with Gazebo, you can do the following steps to view image data
 and similar:
 
@@ -37,3 +37,10 @@ Plugins->Visualization->Image View
 then select /camera/rgb/image_raw from the dropdown
 ```
 you will be able to see image data.
+
+Now run
+```
+./src/patroller/patroller.py
+./src/restorer/restorer.py
+./src/utilities/tf_map_publisher.py
+```

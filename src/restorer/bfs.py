@@ -1,12 +1,11 @@
 import numpy
 import rospy  # module for ROS APIs
 
-# TODO -- make BFS rather than AStar
 
 class SearchNode:
     """This is just a container for pos, cost, heuristic, f"""
 
-    def __init__(self, pos, cost, heuristic, f, parent):
+    def __init__(self, pos, parent):
         self.pos = pos
         self.children = []
         self.parent = parent
@@ -163,9 +162,8 @@ class BFS:
         :param raw_path:       the path before optimization
         :return:               the optimized path
         """
-        new_path = []
         # add the end point
-        new_path.append(raw_path[-1])
+        new_path = [raw_path[-1]]
 
         print ("Minimizing the path")
 
@@ -186,7 +184,7 @@ class BFS:
 
     def perform_search(self, occupancy_threshold):
         """
-        Conducts A* search
+        Conducts BFS search
 
         :param occupancy_threshold:          the decimal threshold a cell has to be greater than to be "occupied"
         :return:                             the optimized set of points the robot will route through
@@ -206,6 +204,8 @@ class BFS:
         while not has_completed and not rospy.is_shutdown():
             # if we're at the goal, complete and break
             did_find_goal = False
+
+            # There are as many possible goals as nodes on the graph; we check all of them.
             for goal_pos in self.goal_pos_possibilities:
                 if goal_pos["x"] == next_node.pos["x"] and goal_pos["y"] == next_node.pos["y"]:
                     has_completed = True
