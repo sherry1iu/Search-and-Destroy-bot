@@ -12,9 +12,9 @@ from geometry_msgs.msg import Twist  # message type for velocity command.
 from std_msgs.msg import String # message type for rotation_warning
 import tf  # library for transformations.
 
-from src.patroller.get_test_json_graph import get_test_json_graph
+from src.test_info.get_test_json_graph import get_test_json_graph
 from src.patroller.route_planner import RoutePlanner
-from src.utilities.get_current_position import get_current_position, translate_point_between_frames
+from src.utilities.get_current_position import get_current_position
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph
 

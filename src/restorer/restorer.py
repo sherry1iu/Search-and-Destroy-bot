@@ -1,10 +1,21 @@
+#!/usr/bin/env python
+
+# Author: Elliot Potter, CS 81, Dartmouth College
+# Date: 11/11/2021
+
+import sys
+
+from src.test_info.get_test_grid import get_test_grid
+
+sys.path.append('../../')
+
 import numpy
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist  # message type for velocity command.
 from nav_msgs.msg import OccupancyGrid
 from std_msgs.msg import String # message type for rotation_warning
 
-from src.patroller.get_test_json_graph import get_test_json_graph
+from src.test_info.get_test_json_graph import get_test_json_graph
 import tf
 
 from src.restorer.bfs import BFS
@@ -53,6 +64,7 @@ class Restorer:
         # we will also outright call the
         if is_test_mode:
             self.raw_graph_callback(get_test_json_graph())
+            self.grid_callback(get_test_grid())
 
         self.should_plan = True
         # a queue of points to get back to the graph
@@ -86,6 +98,9 @@ class Restorer:
 
     def plan(self):
         """Makes a plan to get the robot back onto the graph"""
+        if not self.grid_arrays:
+            return
+
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         node_array = []
         for key in self.node_dictionary:
@@ -98,6 +113,7 @@ class Restorer:
         )
 
         self.path_points_to_visit = bfs.perform_search(OCCUPANCY_THRESHOLD)
+        self.should_plan = False
 
     def restore(self):
         """Executes the plan for returning to the graph"""
