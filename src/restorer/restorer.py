@@ -4,9 +4,6 @@
 # Date: 11/11/2021
 
 import sys
-
-from src.test_info.get_test_grid import get_test_grid
-
 sys.path.append('../../')
 
 import numpy
@@ -22,6 +19,7 @@ from src.restorer.bfs import BFS
 from src.utilities.get_current_position import get_current_position
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph
+from src.test_info.get_test_grid import get_test_grid
 
 FREQUENCY = 10
 OCCUPANCY_THRESHOLD = 0.75
@@ -98,16 +96,22 @@ class Restorer:
 
     def plan(self):
         """Makes a plan to get the robot back onto the graph"""
-        if not self.grid_arrays:
+        if self.grid_arrays is None:
             return
 
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         node_array = []
         for key in self.node_dictionary:
-            node_array.append(self.node_dictionary[key])
+            node_array.append({
+                "x": int(float(self.node_dictionary[key]["x"]) / self.grid_msg.info.resolution),
+                "y": int(float(self.node_dictionary[key]["y"]) / self.grid_msg.info.resolution)
+            })
 
         bfs = BFS(
-            {"x": trans[0], "y": trans[1]},
+            {
+                "x": int(float(trans[0]) / self.grid_msg.info.resolution),
+                "y": int(float(trans[1]) / self.grid_msg.info.resolution)
+            },
             node_array,
             self.grid_arrays
         )
