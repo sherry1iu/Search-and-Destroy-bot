@@ -116,7 +116,16 @@ class Restorer:
             self.grid_arrays
         )
 
-        self.path_points_to_visit = bfs.perform_search(OCCUPANCY_THRESHOLD)
+        path_points_to_visit = bfs.perform_search(OCCUPANCY_THRESHOLD)
+
+        # Restores the x-y resolution, rather than the grid resolution
+        for i in range(len(path_points_to_visit)):
+            path_points_to_visit[i] = {
+                "x": path_points_to_visit[i]["x"] * self.grid_msg.info.resolution,
+                "y": path_points_to_visit[i]["y"] * self.grid_msg.info.resolution,
+            }
+
+        self.path_points_to_visit = path_points_to_visit
         self.should_plan = False
 
     def restore(self):
