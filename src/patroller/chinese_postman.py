@@ -102,7 +102,7 @@ class ChinesePostmanProblem:
         # otherwise, returns the minimum cost and the nodes associated with that minimum cost
         return min_cost, min_cost_nodes
 
-    def find_cpp_loop(self, node_dictionary, edge_dictionary):
+    def find_cpp_loop(self, starting_node, node_dictionary, edge_dictionary):
         """Finds a cpp loop -- this may not be ideal because of the connection we have to make at the end"""
         if len(edge_dictionary) == 0:
             return
@@ -135,6 +135,24 @@ class ChinesePostmanProblem:
         # finds the cheapest world where all given nodes are in pairs
         cheapest_pairs = self.find_cheapest_pairs(edge_to_cost_dictionary, [], {}, 0)[1]
 
+        edge_dict_copy = edge_dictionary.copy()
         # modifies the edge_dictionary to add fake nodes in the middle of each odd pair. This allows us to use those
         # connections to traverse the graph twice for the linked pairs.
+        for i in range(len(cheapest_pairs)):
+            fake_node_name = "fake_node_" + str(i)
+            edge_dict_copy[fake_node_name] = {}
+            cost = edge_dictionary[cheapest_pairs[i][0]][cheapest_pairs[i][1]]
+            # puts 1/2 the cost into every edge of the graph
+            edge_dict_copy[fake_node_name][cheapest_pairs[i][0]] = cost/2
+            edge_dict_copy[fake_node_name][cheapest_pairs[i][1]] = cost/2
+            edge_dict_copy[cheapest_pairs[i][0]][fake_node_name] = cost/2
+            edge_dict_copy[cheapest_pairs[i][0]][fake_node_name] = cost/2
 
+        raw_path = self.hierholzers_method(starting_node, edge_dictionary=edge_dict_copy)
+
+        cleaned_path = []
+        for _id in raw_path:
+            if not _id.match("fake_node_"):
+                cleaned_path.append(_id)
+
+        return cleaned_path
