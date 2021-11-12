@@ -54,6 +54,8 @@ class Patroller:
         self.node_dictionary = None
         # the edges in the graph
         self.edge_dictionary = None
+        # an instance of RoutePlanner
+        self.route_planner = None
         # a queue of nodes in the graph to visit
         self.nodes_to_visit = []
 
@@ -86,12 +88,14 @@ class Patroller:
         """Makes a plan for traversing the graph"""
         # gets the current transformation between the base_link and map reference frames
         trans = get_current_position("map", "base_link", self.transform_listener)[0]
-        planner = RoutePlanner(
-            node_dictionary=self.node_dictionary,
-            edge_dictionary=self.edge_dictionary,
-            current_location={"x": trans[0], "y": trans[1]}
-        )
-        self.nodes_to_visit = planner.find_traversal()
+
+        if not self.route_planner:
+            self.route_planner = RoutePlanner(
+                node_dictionary=self.node_dictionary,
+                edge_dictionary=self.edge_dictionary,
+                current_location={"x": trans[0], "y": trans[1]}
+            )
+        self.nodes_to_visit = self.route_planner.find_traversal().copy()
         self.should_plan = False
 
     def execute_plan(self):
