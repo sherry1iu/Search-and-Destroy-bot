@@ -1,7 +1,10 @@
 import sys
+
+from src.patroller.chinese_postman import ChinesePostmanProblem
+
 sys.path.append('../../')
 
-from src.patroller.get_test_json_graph import get_test_nodes_to_visit
+from src.test_info.get_test_json_graph import get_test_nodes_to_visit
 from src.utilities.move_to_point import get_distance_angle_between_points
 
 
@@ -12,6 +15,8 @@ class RoutePlanner:
         self.node_dictionary = node_dictionary
         self.edge_dictionary = edge_dictionary
         self.current_node = self.find_current_node(current_location)
+        # a ChinesePostman object we'll initialize later and use to solve the graph
+        self.chinese_postman = None
 
     def find_current_node(self, current_location):
         """We assume that we're basically sitting on top of a node -- all we need to do is find which one"""
@@ -29,10 +34,18 @@ class RoutePlanner:
             )
             if closest_node is None or length < closest_node_distance:
                 closest_node_distance = length
-                closest_node = self.node_dictionary[_id]
+                closest_node = _id
 
         return closest_node
 
     def find_traversal(self):
         """Finds an efficient traversal of the graph such that all edges are traversed at least once"""
-        return get_test_nodes_to_visit()
+        #return get_test_nodes_to_visit()
+        if not self.chinese_postman:
+            self.chinese_postman = ChinesePostmanProblem()
+            self.chinese_postman.find_cpp_loop(
+                starting_node=self.current_node,
+                node_dictionary=self.node_dictionary,
+                edge_dictionary=self.edge_dictionary
+            )
+        return self.chinese_postman.closed_cpp_loop

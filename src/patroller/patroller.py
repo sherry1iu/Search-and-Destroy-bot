@@ -12,9 +12,9 @@ from geometry_msgs.msg import Twist  # message type for velocity command.
 from std_msgs.msg import String # message type for rotation_warning
 import tf  # library for transformations.
 
-from src.patroller.get_test_json_graph import get_test_json_graph
+from src.test_info.get_test_json_graph import get_test_json_graph
 from src.patroller.route_planner import RoutePlanner
-from src.utilities.get_current_position import get_current_position, translate_point_between_frames
+from src.utilities.get_current_position import get_current_position
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph
 
@@ -28,6 +28,7 @@ class Patroller:
     def __init__(self, is_live, is_test_mode):
         """Initialization function."""
         if is_test_mode:
+            # self.mode = "restoring"
             self.mode = "patrolling"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
@@ -42,7 +43,7 @@ class Patroller:
 
         # callback and publisher for mode switching
         self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
-        self.mode_publisher = rospy.Subscriber("mode", String, queue_size=1)
+        self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
 
         # whether we should re-do the planned patrol route
         self.should_plan = True
@@ -54,6 +55,8 @@ class Patroller:
         self.node_dictionary = None
         # the edges in the graph
         self.edge_dictionary = None
+        # an instance of RoutePlanner
+        self.route_planner = None
         # a queue of nodes in the graph to visit
         self.nodes_to_visit = []
 
@@ -68,6 +71,7 @@ class Patroller:
         self.node_dictionary, self.edge_dictionary = parse_json_graph(raw_graph_string)
 
     def mode_callback(self, msg):
+        print(msg)
         """The callback for switching modes"""
         if msg.data is "patrolling" and self.mode is not "patrolling":
             # we will want to re-plan, because we may be at a new location on the graph
@@ -85,12 +89,19 @@ class Patroller:
         """Makes a plan for traversing the graph"""
         # gets the current transformation between the base_link and map reference frames
         trans = get_current_position("map", "base_link", self.transform_listener)[0]
-        planner = RoutePlanner(
-            node_dictionary=self.node_dictionary,
-            edge_dictionary=self.edge_dictionary,
-            current_location={"x": trans[0], "y": trans[1]}
-        )
-        self.nodes_to_visit = planner.find_traversal()
+
+        if not self.route_planner:
+            self.route_planner = RoutePlanner(
+                node_dictionary=self.node_dictionary,
+                edge_dictionary=self.edge_dictionary,
+                current_location={"x": trans[0], "y": trans[1]}
+            )
+        nodes_to_visit = self.route_planner.find_traversal()[:]
+        coords_to_visit = []
+        # convert from id to coordinate
+        for _id in nodes_to_visit:
+            coords_to_visit.append(self.node_dictionary[_id])
+        self.nodes_to_visit = coords_to_visit
         self.should_plan = False
 
     def execute_plan(self):
@@ -98,6 +109,7 @@ class Patroller:
         if len(self.nodes_to_visit) is 0:
             # re-plan if we just traversed the entire graph
             print("Re-patrolling the graph")
+            self.should_plan = True
             return
             # self.plan()
 
@@ -105,13 +117,13 @@ class Patroller:
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         yaw = tf.transformations.euler_from_quaternion(rot)[2]
 
-        print("Next node:")
-        print(next_node)
-        print("Current node:")
-        print(trans)
-        print("Orientation:")
-        print(yaw)
-        print("\n")
+        # print("Next node:")
+        # print(next_node)
+        # print("Current node:")
+        # print(trans)
+        # print("Orientation:")
+        # print(yaw)
+        # print("\n")
 
         move_to_point(current_point=trans,
                       current_orientation=yaw,
@@ -124,17 +136,18 @@ class Patroller:
         """Loops; triggers patrolling if mode is patrolling"""
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
         while not rospy.is_shutdown():
-            if self.mode is "patrolling":
+            if self.mode == "patrolling":
                 # if we haven't arrived on the graph yet, we will use the Restorer to get us there
                 if not self.is_on_graph:
+                    print("We are not on the graph. Restoring...")
                     self.mode_publisher("restoring")
                     self.is_on_graph = True
 
                 if self.should_plan is True:
-                    print("Planning...")
+                    print("Planning patrol path...")
                     self.plan()
                 else:
-                    print("Executing plan")
+                    print("Executing patrol path plan")
                     self.execute_plan()
 
             rate.sleep()
