@@ -136,27 +136,7 @@ class ChinesePostmanProblem:
             # will return these to be the original value of the nodes
             else:
                 for j in range(len(node_path) - 1):
-                    low_node = node_path[j]
-                    high_node = node_path[j+1]
-                    cost = edge_dictionary[low_node][high_node]
-
-                    # create new nodes in the middle; use them to patch together an alternative path
-                    if j > 0:
-                        fake_node_name = "fake_node_" + str(node_path[j])
-                        if fake_node_name not in edge_dictionary_copy:
-                            edge_dictionary_copy[fake_node_name] = {}
-                        low_node = fake_node_name
-
-                    if j+1 < len(node_path) - 1:
-                        fake_node_name = "fake_node_" + str(node_path[j+1])
-                        if fake_node_name not in edge_dictionary_copy:
-                            edge_dictionary_copy[fake_node_name] = {}
-                        high_node = fake_node_name
-
-                    edge_dictionary_copy[low_node][high_node] = cost
-                    edge_dictionary_copy[high_node][low_node] = cost
-
-
+                    if j > 0 or j < len(node_path) - 1:
 
     def find_cpp_loop(self, starting_node, node_dictionary, edge_dictionary):
         """Finds a cpp loop -- this may not be ideal because of the connection we have to make at the end"""
@@ -203,14 +183,8 @@ class ChinesePostmanProblem:
 
         cleaned_path = []
         for _id in raw_path:
-            # remove the removable nodes in the path
-            if str(_id).find("fake_node_remove_") == -1:
-                # exchange the other nodes for their ream counterparts
-                if str(_id).find("fake_node_") == -1:
-                    cleaned_path.append(_id)
-                else:
-                    # remove the string parts and convert to an int
-                    cleaned_path.append(int(str.replace(_id, "fake_node_", "")))
+            if str(_id).find("fake_node_") == -1:
+                cleaned_path.append(_id)
             else:
                 print("Removed fake id:")
                 print(_id)
