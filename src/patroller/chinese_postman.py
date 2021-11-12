@@ -1,3 +1,6 @@
+from src.patroller.dijkstra import DijkstraSearch
+
+
 class ChinesePostmanProblem:
     """
     I use an adaptation of the pseudocode and R code found here:
@@ -10,12 +13,15 @@ class ChinesePostmanProblem:
         # a closed cycle where the start and end nodes are neighbors
         self.closed_cpp_loop = []
 
-    def navigate_between_nodes(self, start_node, end_node, edge_dictionary):
+    @staticmethod
+    def navigate_between_nodes(start_node, end_node, edge_dictionary):
         """Finds the optimal path from the start to end node for the robot using Dijkstra's algo"""
+        dijkstra = DijkstraSearch(initial_id=start_node, goal_id=end_node, edge_dictionary=edge_dictionary)
+        path = dijkstra.perform_search()
+        return path
 
-        return []
-
-    def get_cost_of_path(self, path, edge_dictionary):
+    @staticmethod
+    def get_cost_of_path(path, edge_dictionary):
         """Gets the cost of this path"""
         cost = 0
         if len(path) > 1:
@@ -25,7 +31,8 @@ class ChinesePostmanProblem:
 
         return cost
 
-    def hierholzers_method(self, starting_node, edge_dictionary):
+    @staticmethod
+    def hierholzers_method(starting_node, edge_dictionary):
         """
         Given a graph of nodes of entirely even degree, finds a Eulerian cycle in constant time
 
@@ -155,4 +162,6 @@ class ChinesePostmanProblem:
             if not _id.match("fake_node_"):
                 cleaned_path.append(_id)
 
+        # store an instance variable that we may recover later
+        self.closed_cpp_loop = cleaned_path
         return cleaned_path
