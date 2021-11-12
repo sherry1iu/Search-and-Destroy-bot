@@ -61,7 +61,10 @@ class ChinesePostmanProblem:
                 curr_path.append(curr_v)
                 # Find the next vertex using an edge
                 next_v = remaining_edges[curr_v].pop()
+                # remove from the other side as well
+                remaining_edges[next_v].remove(next_v)
                 edge_count[curr_v] -= 1
+                edge_count[next_v] -= 1
 
                 # Move to next vertex
                 curr_v = next_v
@@ -86,9 +89,9 @@ class ChinesePostmanProblem:
 
         for _id1 in cost_dictionary:
             if _id1 not in used_nodes:
-                for _id2 in cost_dictionary:
+                for _id2 in cost_dictionary[_id1]:
                     if _id2 not in used_nodes and not _id1 == _id2:
-                        temp_pairs = pairs.copy()
+                        temp_pairs = pairs[:]
                         temp_pairs.append((_id1, _id2))
                         temp_used_nodes = used_nodes.copy()
                         temp_used_nodes[_id1] = True
@@ -110,6 +113,30 @@ class ChinesePostmanProblem:
 
         # otherwise, returns the minimum cost and the nodes associated with that minimum cost
         return min_cost, min_cost_nodes
+
+    def create_fake_nodes(self, node_pairs, edge_dictionary_copy, edge_dictionary, edge_to_cost_dictionary):
+        """Creates fake, otherwise unconnected links between each node in node_pairs"""
+        # modifies the edge_dictionary to add fake nodes in the middle of each odd pair. This allows us to use those
+        # connections to traverse the graph twice for the linked pairs.
+        for i in range(len(node_pairs)):
+            node_path = self.navigate_between_nodes(node_pairs[0], node_pairs[1], edge_dictionary)
+
+            # if the len is 2, then we add a node in the middle of the connection that we will remove later
+            if len(node_path) == 2:
+                fake_node_name = "fake_node_remove_" + str(i)
+                edge_dictionary_copy[fake_node_name] = {}
+                cost = edge_to_cost_dictionary[node_pairs[i][0]][node_pairs[i][1]]
+                # puts 1/2 the cost into every edge of the graph
+                edge_dictionary_copy[fake_node_name][node_pairs[i][0]] = cost/2
+                edge_dictionary_copy[fake_node_name][node_pairs[i][1]] = cost/2
+                edge_dictionary_copy[node_pairs[i][0]][fake_node_name] = cost/2
+                edge_dictionary_copy[node_pairs[i][0]][fake_node_name] = cost/2
+
+            # otherwise, the len > 2 and we will copy the middle nodes to create fake nodes. After pathing, we
+            # will return these to be the original value of the nodes
+            else:
+                for j in range(len(node_path) - 1):
+                    if j > 0 or j < len(node_path) - 1:
 
     def find_cpp_loop(self, starting_node, node_dictionary, edge_dictionary):
         """Finds a cpp loop -- this may not be ideal because of the connection we have to make at the end"""
@@ -145,18 +172,13 @@ class ChinesePostmanProblem:
         cheapest_pairs = self.find_cheapest_pairs(edge_to_cost_dictionary, [], {}, 0)[1]
 
         edge_dict_copy = edge_dictionary.copy()
-        # modifies the edge_dictionary to add fake nodes in the middle of each odd pair. This allows us to use those
-        # connections to traverse the graph twice for the linked pairs.
-        for i in range(len(cheapest_pairs)):
-            fake_node_name = "fake_node_" + str(i)
-            edge_dict_copy[fake_node_name] = {}
-            cost = edge_dictionary[cheapest_pairs[i][0]][cheapest_pairs[i][1]]
-            # puts 1/2 the cost into every edge of the graph
-            edge_dict_copy[fake_node_name][cheapest_pairs[i][0]] = cost/2
-            edge_dict_copy[fake_node_name][cheapest_pairs[i][1]] = cost/2
-            edge_dict_copy[cheapest_pairs[i][0]][fake_node_name] = cost/2
-            edge_dict_copy[cheapest_pairs[i][0]][fake_node_name] = cost/2
-
+        # creates fake nodes so that we can find a cycle
+        self.create_fake_nodes(
+            node_pairs=cheapest_pairs,
+            edge_dictionary=edge_dictionary,
+            edge_dictionary_copy=edge_dict_copy,
+            edge_to_cost_dictionary=edge_to_cost_dictionary
+        )
         raw_path = self.hierholzers_method(starting_node, edge_dictionary=edge_dict_copy)
 
         cleaned_path = []
