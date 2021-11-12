@@ -12,6 +12,10 @@ module.
 
 ### patroller
 
+### Camera
+
+### Chaser
+
 ### restorer
 
 ## Testing:
@@ -37,6 +41,8 @@ Plugins->Visualization->Image View
 then select /camera/rgb/image_raw from the dropdown
 ```
 you will be able to see image data.
+<<<<<<< HEAD
+=======
 
 Now run
 ```
@@ -44,3 +50,4 @@ Now run
 ./src/restorer/restorer.py
 ./src/utilities/tf_map_publisher.py
 ```
+>>>>>>> bb1dc0f4166dc2847fd7e02913ef795edf78fb04
