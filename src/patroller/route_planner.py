@@ -34,7 +34,7 @@ class RoutePlanner:
             )
             if closest_node is None or length < closest_node_distance:
                 closest_node_distance = length
-                closest_node = self.node_dictionary[_id]
+                closest_node = _id
 
         return closest_node
 

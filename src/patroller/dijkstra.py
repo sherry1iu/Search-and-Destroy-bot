@@ -3,10 +3,10 @@ import rospy  # module for ROS APIs
 
 
 class SearchNode:
-    """This is just a container for _id, cost"""
+    """This is just a container for node_id, cost"""
 
-    def __init__(self, _id, cost, parent):
-        self.id = _id
+    def __init__(self, node_id, cost, parent):
+        self.node_id = node_id
         self.cost = cost
         self.children = []
         self.parent = parent
@@ -29,22 +29,22 @@ class DijkstraSearch:
         # this will we be stored so that we can backtrack from the goal to the top of the tree
         self.goal_node = None
 
-    def add_child_node(self, _id, parent):
+    def add_child_node(self, node_id, parent):
         """expand the child node, keeping track of cost w.r.t origin"""
         # We check to see if the node has already been visited (i.e added to the tree)
-        if not self.expanded_nodes[_id]:
-            self.expanded_nodes[_id] = True
+        if node_id not in self.expanded_nodes or self.expanded_nodes[node_id]:
+            self.expanded_nodes[node_id] = True
 
-            cost = parent.cost + self.edge_dictionary[parent.id][_id]
+            cost = parent.cost + self.edge_dictionary[parent.node_id][node_id]
             # instantiate a new node
-            child = SearchNode(id, cost, parent)
+            child = SearchNode(node_id, cost, parent)
             self.priority_queue.append(child)
             parent.add_child(child)
 
     def expand_node(self, node):
         """Expand a node"""
-        for _id in self.edge_dictionary[node.id]:
-            self.add_child_node(_id, node)
+        for node_id in self.edge_dictionary[node.node_id]:
+            self.add_child_node(node_id, node)
 
     def get_minimum(self):
         """
@@ -79,12 +79,12 @@ class DijkstraSearch:
 
         backtrack_chain = []
         current_node = self.goal_node
-        backtrack_chain.append(current_node.id)
+        backtrack_chain.append(current_node.node_id)
 
         # moves up the chain, which resembles a Linked List in the upward direction of the tree
         while current_node.parent is not None:
             current_node = current_node.parent
-            backtrack_chain.append(current_node.id)
+            backtrack_chain.append(current_node.node_id)
 
         return backtrack_chain
 
@@ -92,13 +92,13 @@ class DijkstraSearch:
         """
         Conducts Dijkstra search
 
-        :return:                             the optimized set of points the robot will route through
+        :return:                             the set of nodes the robot will route through
         """
         # clear goal_node
         self.goal_node = None
 
-        print("Initial _id: " + str(self.initial_id))
-        print("Goal _id: " + str(self.goal_id))
+        print("Initial node_id: " + str(self.initial_id))
+        print("Goal node_id: " + str(self.goal_id))
 
         self.tree = SearchNode(self.initial_id, 0, None)
         next_node = self.tree
@@ -106,7 +106,7 @@ class DijkstraSearch:
         has_completed = False
         while not has_completed and not rospy.is_shutdown():
             # if we're at the goal, complete and break
-            if self.goal_id == next_node.id:
+            if self.goal_id == next_node.node_id:
                 has_completed = True
                 # we set the goal_node for future retrieval
                 self.goal_node = next_node
@@ -114,12 +114,10 @@ class DijkstraSearch:
             else:
                 self.expand_node(next_node)
                 next_node = self.get_minimum()
-                # print("Next node: " + str(next_node.id) + ", queue length: " + str(len(self.priority_queue)))
+                # print("Next node: " + str(next_node.node_id) + ", queue length: " + str(len(self.priority_queue)))
 
-        # gets the raw path based on A* search
         raw_path = self.perform_backtrack()
 
-        print ("Search complete")
-
         # reverses the backtrack
-        return raw_path.reverse()
+        raw_path.reverse()
+        return raw_path

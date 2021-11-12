@@ -28,7 +28,8 @@ class Patroller:
     def __init__(self, is_live, is_test_mode):
         """Initialization function."""
         if is_test_mode:
-            self.mode = "restoring"
+            # self.mode = "restoring"
+            self.mode = "patrolling"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
@@ -95,7 +96,11 @@ class Patroller:
                 edge_dictionary=self.edge_dictionary,
                 current_location={"x": trans[0], "y": trans[1]}
             )
-        self.nodes_to_visit = self.route_planner.find_traversal().copy()
+        nodes_to_visit = self.route_planner.find_traversal()[:]
+        coords_to_visit = []
+        # convert from id to coordinate
+        for _id in nodes_to_visit:
+            coords_to_visit.append(self.node_dictionary[_id])
         self.should_plan = False
 
     def execute_plan(self):

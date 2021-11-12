@@ -18,6 +18,7 @@ class ChinesePostmanProblem:
         """Finds the optimal path from the start to end node for the robot using Dijkstra's algo"""
         dijkstra = DijkstraSearch(initial_id=start_node, goal_id=end_node, edge_dictionary=edge_dictionary)
         path = dijkstra.perform_search()
+        print(path)
         return path
 
     @staticmethod
@@ -74,7 +75,8 @@ class ChinesePostmanProblem:
                 curr_path.pop()
 
         # return the reversed circuit
-        return circuit.reverse()
+        circuit.reverse()
+        return circuit
 
     def find_cheapest_pairs(self, cost_dictionary, pairs, used_nodes, cumulative_cost):
         """Finds the cheapest world where all the nodes are in pairs; calls itself recursively"""
@@ -83,9 +85,9 @@ class ChinesePostmanProblem:
         did_recurse = False
 
         for _id1 in cost_dictionary:
-            if not used_nodes[_id1]:
+            if _id1 not in used_nodes:
                 for _id2 in cost_dictionary:
-                    if not used_nodes[_id2] and not _id1 == _id2:
+                    if _id2 not in used_nodes and not _id1 == _id2:
                         temp_pairs = pairs.copy()
                         temp_pairs.append((_id1, _id2))
                         temp_used_nodes = used_nodes.copy()
@@ -159,8 +161,11 @@ class ChinesePostmanProblem:
 
         cleaned_path = []
         for _id in raw_path:
-            if not _id.match("fake_node_"):
+            if str(_id).find("fake_node_") == -1:
                 cleaned_path.append(_id)
+            else:
+                print("Removed fake id:")
+                print(_id)
 
         # store an instance variable that we may recover later
         self.closed_cpp_loop = cleaned_path
