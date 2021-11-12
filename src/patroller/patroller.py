@@ -101,6 +101,7 @@ class Patroller:
         # convert from id to coordinate
         for _id in nodes_to_visit:
             coords_to_visit.append(self.node_dictionary[_id])
+        self.nodes_to_visit = coords_to_visit
         self.should_plan = False
 
     def execute_plan(self):
