@@ -64,7 +64,7 @@ class Localizer():
         self.last_translation = 0
         self.last_rotation = 0
 
-        self.grid_sub = rospy.Publisher(GRID_TOPIC, OccupancyGrid, self.grid_callback, queue_size=1)
+        self.grid_sub = rospy.Subscriber(GRID_TOPIC, OccupancyGrid, self.grid_callback, queue_size=1)
         self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
         self.cmd_pub = rospy.Publisher(DEFAULT_CMD_VEL_TOPIC, Twist, queue_size=1)
 
@@ -162,12 +162,12 @@ class Localizer():
                 if sum_squared_errors > self.error_threshold:
                     self.possible_positions.remove(position)
 
+        print("possible positions: ")
+        for position in self.possible_positions:
+            print("x: {}, y: {}, theta: {}".format(position.x, position.y, position.theta))
         # stop if localized / no possible positions
         if len(self.possible_positions) <= 1:
             self.state = fsm.STOP
-            print("possible positions: ")
-            for position in self.possible_positions:
-                print("x: {}, y: {}, theta: {}".format(position.x, position.y, position.theta))
             return
 
         # else, move the robot: translate if there is space ahead, else rotate to make space
