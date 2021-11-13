@@ -61,10 +61,11 @@ class ChinesePostmanProblem:
                 curr_path.append(curr_v)
                 # Find the next vertex using an edge
                 next_v = remaining_edges[curr_v].pop()
-                # remove from the other side as well
-                remaining_edges[next_v].remove(next_v)
                 edge_count[curr_v] -= 1
-                edge_count[next_v] -= 1
+                # remove from the other side as well
+                if curr_v in remaining_edges[next_v]:
+                    remaining_edges[next_v].remove(curr_v)
+                    edge_count[next_v] -= 1
 
                 # Move to next vertex
                 curr_v = next_v
@@ -119,7 +120,7 @@ class ChinesePostmanProblem:
         # modifies the edge_dictionary to add fake nodes in the middle of each odd pair. This allows us to use those
         # connections to traverse the graph twice for the linked pairs.
         for i in range(len(node_pairs)):
-            node_path = self.navigate_between_nodes(node_pairs[0], node_pairs[1], edge_dictionary)
+            node_path = self.navigate_between_nodes(node_pairs[i][0], node_pairs[i][1], edge_dictionary)
 
             # if the len is 2, then we add a node in the middle of the connection that we will remove later
             if len(node_path) == 2:
@@ -130,7 +131,7 @@ class ChinesePostmanProblem:
                 edge_dictionary_copy[fake_node_name][node_pairs[i][0]] = cost/2
                 edge_dictionary_copy[fake_node_name][node_pairs[i][1]] = cost/2
                 edge_dictionary_copy[node_pairs[i][0]][fake_node_name] = cost/2
-                edge_dictionary_copy[node_pairs[i][0]][fake_node_name] = cost/2
+                edge_dictionary_copy[node_pairs[i][1]][fake_node_name] = cost/2
 
             # otherwise, the len > 2 and we will copy the middle nodes to create fake nodes. After pathing, we
             # will return these to be the original value of the nodes
@@ -155,8 +156,6 @@ class ChinesePostmanProblem:
 
                     edge_dictionary_copy[low_node][high_node] = cost
                     edge_dictionary_copy[high_node][low_node] = cost
-
-
 
     def find_cpp_loop(self, starting_node, node_dictionary, edge_dictionary):
         """Finds a cpp loop -- this may not be ideal because of the connection we have to make at the end"""
@@ -211,9 +210,6 @@ class ChinesePostmanProblem:
                 else:
                     # remove the string parts and convert to an int
                     cleaned_path.append(int(str.replace(_id, "fake_node_", "")))
-            else:
-                print("Removed fake id:")
-                print(_id)
 
         # store an instance variable that we may recover later
         self.closed_cpp_loop = cleaned_path
