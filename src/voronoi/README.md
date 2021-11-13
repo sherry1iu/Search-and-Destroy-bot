@@ -14,19 +14,19 @@ The message contents are a JSON string of each node's position, id, and neighbor
     "x": 0.0,
     "y": 5.0,
     "id": 0,
-    "neighbor_ids": [1, 2]
+    "neighbors": [1, 2]
   },
   { 
     "x": 10.2,
     "y": 3.1,
     "id": 1,
-    "neighbor_ids": [0]
+    "neighbors": [0]
   },
   { 
     "x": 5.0,
     "y": 5.0,
     "id": 2,
-    "neighbor_ids": [0]
+    "neighbors": [0]
   }
 ]
 ```
