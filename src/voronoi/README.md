@@ -1,9 +1,20 @@
 # Graph Server
 
-The graph server takes an occupancy grid from file and does two things:
+The graph server takes an occupancy grid from file and runs a ROS service that will return a Voronoi Graph in JSON format parsed from a published occupancy grid.
 
-1. Publishes the map as OccupancyGrid messages on the `/map` topic (configurable)
-2. Runs a ROS service that will return a Voronoi Graph in JSON format parsed from the occupancy grid
+## Requierments
+
+* numpy
+* scipy
+* scikit-image
+* ROS
+
+## Running the Server
+
+0. Ensure a valid occupancy grid is being published and make sure its topic matches the global varibale `DEFAUL_MAP_TOPIC`
+1. Run the executable: `./graph_server.py
+2. Have some external code call its ROS service (or manually: `rosservice call /graph "{}"`
+3. Profit!
 
 ## Message Format
 
@@ -30,4 +41,3 @@ The message contents are a JSON string of each node's position, id, and neighbor
   }
 ]
 ```
-
