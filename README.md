@@ -72,3 +72,16 @@ cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
 catkin_make
 ```
+
+Add this within the <world></world> tags of the world file.
+It will cause the robot to create a map from scan data and publish on the /map topic.
+``` 
+<plugin name='gazebo_occupancy_map' filename='libgazebo_2Dmap_plugin.so'>
+    <map_resolution>0.1</map_resolution> <!-- in meters, optional, default $
+    <map_height>0.3</map_height>         <!-- in meters, optional, default $
+    <map_size_x>10</map_size_x>          <!-- in meters, optional, default $
+    <map_size_y>10</map_size_y>          <!-- in meters, optional, default $
+    <init_robot_x>0</init_robot_x>          <!-- x coordinate in meters, op$
+    <init_robot_y>0</init_robot_y>          <!-- y coordinate in meters, op$
+</plugin>
+```
