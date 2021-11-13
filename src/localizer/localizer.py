@@ -37,12 +37,12 @@ class fsm(Enum):
 
 class Grid:
     def __init__(self, occupancy_grid_data, width, height, resolution):
-        self.grid = numpy.reshape(occupancy_grid_data, (height, width))
+        self.grid = np.reshape(occupancy_grid_data, (height, width))
         self.width = width
         self.height = height
         self.resolution = resolution
 
-    def cell_at(x, y):
+    def cell_at(self, x, y):
         return self.grid[y, x]
 
 class Position:
@@ -78,34 +78,35 @@ class Localizer():
     def build_distances(self):
         """Builds a dictionary of forward/back/left/right distances from every grid square"""
         if self.distances == None:
-            self.distances = [[dict() for x in range(self.grid.height)] for x in range(self.grid.width)]
+            self.distances = [[[0 for x in range(4)] for x in range(self.grid.height)] for x in range(self.grid.width)]
 
         for x in range(0, self.grid.width):
             for y in range(0, self.grid.height):
                 if self.grid.cell_at(x, y) == 100: continue     # continue if wall
 
-                self.distances[x][y].forward = 0
+                self.distances[x][y][0] = 0
                 for y_2 in range(y + 1, self.grid.height):
                     if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-                    self.distances[x][y].forward += self.grid.resolution
+                    self.distances[x][y][0] += self.grid.resolution
 
-                self.distances[x][y].back = 0
+                self.distances[x][y][2] = 0
                 for y_2 in range(y - 1, -1, -1):
                     if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-                    self.distances[x][y].back += self.grid.resolution
+                    self.distances[x][y][2] += self.grid.resolution
 
-                self.distances[x][y].right = 0
+                self.distances[x][y][3] = 0
                 for x_2 in range(x + 1, self.grid.width):
                     if self.grid.cell_at(x_2, y) == 100: break
-                    self.distances[x][y].right += self.grid.resolution
+                    self.distances[x][y][3] += self.grid.resolution
 
-                self.distances[x][y].left = 0
+                self.distances[x][y][1] = 0
                 for x_2 in range(x - 1, -1, -1):
                     if self.grid.cell_at(x_2, y) == 100: break
-                    self.distances[x][y].left += self.grid.resolution
+                    self.distances[x][y][1] += self.grid.resolution
 
     def laser_callback(self, msg):
         if self.state != fsm.SCAN: return
+        print("begin laser")
 
         min_index = int((MIN_SCAN_ANGLE_RAD - msg.angle_min) / msg.angle_increment)
         max_index = int((MAX_SCAN_ANGLE_RAD - msg.angle_min) / msg.angle_increment)
@@ -126,10 +127,9 @@ class Localizer():
 
                 for x in range(0, self.grid.width):
                     for y in range(0, self.grid.height):
-                        sum_squared_errors = (msg.ranges[indices[0]] - self.distances[x][y].forward) ** 2 + \
-                                            (msg.ranges[indices[1]] - self.distances[x][y].left) ** 2 + \
-                                            (msg.ranges[indices[2]] - self.distances[x][y].back) ** 2 + \
-                                            (msg.ranges[indices[3]] - self.distances[x][y].right) ** 2
+                        sum_squared_errors = 0
+                        for i in range(4):
+                            sum_squared_errors += (msg.ranges[indices[i]] - self.distances[x][y][i]) ** 2
                         if sum_squared_errors <= self.error_threshold:
                             self.possible_positions.append(Position(x, y, -angles[0]))
         else:
@@ -153,10 +153,9 @@ class Localizer():
                     indices.append(int((angles[i] - msg.angle_min) / msg.angle_increment))
 
                 # calculate error based on scans and theoretical grid distances
-                sum_squared_errors = (msg.ranges[indices[0]] - self.distances[new_x][new_y].forward) ** 2 + \
-                                    (msg.ranges[indices[1]] - self.distances[new_x][new_y].left) ** 2 + \
-                                    (msg.ranges[indices[2]] - self.distances[new_x][new_y].back) ** 2 + \
-                                    (msg.ranges[indices[3]] - self.distances[new_x][new_y].right) ** 2
+                sum_squared_errors = 0
+                for i in range(4):
+                    sum_squared_errors += (msg.ranges[indices[i]] - self.distances[new_x][new_y][i]) ** 2
 
                 # remove possible positions if error is above threshold
                 if sum_squared_errors > self.error_threshold:
