@@ -7,7 +7,9 @@ import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
+from std_msgs.msg import String
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import tf
 import math
@@ -55,6 +57,7 @@ class Localizer():
     def __init__(self):
         """Constructor"""
         self.state = fsm.UNINIT
+        self.mode = "localizing"
 
         self.grid = None
         self.distances = None
@@ -70,9 +73,29 @@ class Localizer():
         self.grid_sub = rospy.Subscriber(GRID_TOPIC, OccupancyGrid, self.grid_callback, queue_size=1)
         self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
         self.cmd_pub = rospy.Publisher(DEFAULT_CMD_VEL_TOPIC, Twist, queue_size=1)
+        self.pose_pub = rospy.Publisher("amcl_pose", PoseWithCovarianceStamped, queue_size=1)
+
+        self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
+        self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
+
+        self.final_pos = None
+
+    def mode_callback(self, msg):
+        print(msg)
+        """The callback for switching modes"""
+        if msg.data is "localizing" and self.mode is not "localizing":
+            self.state = fsm.UNINIT
+        self.mode = msg.data
+
+    def mode_publisher(self, mode):
+        """The publisher for switching modes"""
+        self.mode = mode
+        msg = String()
+        msg.data = mode
+        self.mode_publisher.publish(msg)
 
     def grid_callback(self, msg):
-        if self.state != fsm.UNINIT: return
+        if self.mode is not "localizing" or self.state != fsm.UNINIT: return
         self.grid = Grid(msg.data, msg.info.width, msg.info.height, msg.info.resolution)
         self.error_threshold = (2 * self.grid.resolution) ** 2
         self.build_distances()
@@ -108,7 +131,7 @@ class Localizer():
                     self.distances[x][y][1] += self.grid.resolution
 
     def laser_callback(self, msg):
-        if self.state != fsm.SCAN: return
+        if self.mode is not "localizing" or self.state != fsm.SCAN: return
         print("begin laser")
 
         min_index = int((MIN_SCAN_ANGLE_RAD - msg.angle_min) / msg.angle_increment)
@@ -167,9 +190,12 @@ class Localizer():
         print("possible positions: ")
         for position in self.possible_positions:
             print("x: {}, y: {}, theta: {}".format(position.x, position.y, position.theta))
+
         # stop if localized / no possible positions
         if len(self.possible_positions) <= 1:
             self.state = fsm.STOP
+            self.final_pos = self.possible_positions[0]
+            self.mode_publisher("restoring")
             return
 
         # else, move the robot: translate if there is space ahead, else rotate to make space
@@ -217,9 +243,29 @@ class Localizer():
             self.cmd_pub.publish(twist_msg)
             rate.sleep()    # sleep to maintain given frequency
 
+    def publish_final_pose(self, pos):
+        msg = PoseWithCovarianceStamped()
+        
+        msg.header.seq = 0
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "map"
+
+        msg.pose.pose.position.x = pos.x
+        msg.pose.pose.position.x = pos.y
+
+        quaternion = tf.transformations.quaternion_from_euler(0, 0, pos.theta)
+        msg.pose.pose.orientation.x = quaternion[0]
+        msg.pose.pose.orientation.y = quaternion[1]
+        msg.pose.pose.orientation.z = quaternion[2]
+        msg.pose.pose.orientation.w = quaternion[3]
+
+        self.pose_pub.publish(msg)
+
     def spin(self):
         rate = rospy.Rate(FREQUENCY)
-        while not rospy.is_shutdown():            
+        while not rospy.is_shutdown():
+            if self.state == fsm.STOP and self.final_pos != None:
+                self.publish_final_pose(self.final_pos)
             rate.sleep()
 
 def main():
