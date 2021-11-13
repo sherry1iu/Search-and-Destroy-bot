@@ -14,7 +14,7 @@ def get_test_json_graph():
            '{"x": 7.0, "y": 2.0, "id": 10, "neighbor_ids": [9, 11]},' \
            '{"x": 8.0, "y": 2.0, "id": 11, "neighbor_ids": [10, 12]},' \
            '{"x": 8.0, "y": 4.0, "id": 12, "neighbor_ids": [11, 13]},' \
-           '{"x": 8.0, "y": 3.0, "id": 13, "neighbor_ids": [12, 9]}' \
+           '{"x": 7.0, "y": 3.0, "id": 13, "neighbor_ids": [12, 9]}' \
            ']'
 
 

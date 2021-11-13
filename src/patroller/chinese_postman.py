@@ -213,4 +213,5 @@ class ChinesePostmanProblem:
 
         # store an instance variable that we may recover later
         self.closed_cpp_loop = cleaned_path
+        print(cleaned_path)
         return cleaned_path
