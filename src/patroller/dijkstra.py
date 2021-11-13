@@ -97,9 +97,6 @@ class DijkstraSearch:
         # clear goal_node
         self.goal_node = None
 
-        print("Initial node_id: " + str(self.initial_id))
-        print("Goal node_id: " + str(self.goal_id))
-
         self.tree = SearchNode(self.initial_id, 0, None)
         next_node = self.tree
 
