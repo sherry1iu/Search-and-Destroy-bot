@@ -25,7 +25,7 @@ and similar:
 ```
 cd ~/catkin_ws/src
 git clone https://github.com/husarion/rosbot_description
-cd ~/ros_workspace
+cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
 catkin_make
 roslaunch rosbot_description rosbot_rviz_gmapping.launch
@@ -63,3 +63,12 @@ I recommend you type out `turtlebot_playground.world` and hit enter. This will s
 into your home directory. You should then copy it over to 
 `catkin_ws/src/rosbot_description/src/rosbot_gazebo/world`. It will override an existing world.
 When you re-launch the simulation, it will retain your changes.
+
+## Building the Map
+```
+cd ~/catkin_ws/src
+git clone https://github.com/marinaKollmitz/gazebo_ros_2Dmap_plugin
+cd ~/catkin_ws
+rosdep install --from-paths src --ignore-src -r -y
+catkin_make
+```
