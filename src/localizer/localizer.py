@@ -64,6 +64,9 @@ class Localizer():
         self.last_translation = 0
         self.last_rotation = 0
 
+        self.linear_velocity = 0.3
+        self.angular_velocity = math.pi / 4
+
         self.grid_sub = rospy.Subscriber(GRID_TOPIC, OccupancyGrid, self.grid_callback, queue_size=1)
         self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
         self.cmd_pub = rospy.Publisher(DEFAULT_CMD_VEL_TOPIC, Twist, queue_size=1)
@@ -136,8 +139,8 @@ class Localizer():
             # if possible positions have been previously computed, only choose among those
             for position in self.possible_positions:
                 # calculate new position robot must be in based on last rotation/translation
-                new_x = position.x + math.cos(position.theta) * self.last_translation
-                new_y = position.y + math.sin(position.theta) * self.last_translation
+                new_x = int(position.x + math.cos(position.theta) * self.last_translation)
+                new_y = int(position.y + math.sin(position.theta) * self.last_translation)
                 new_theta = position.theta + self.last_rotation
                 if new_theta > math.pi: new_theta -= 2 * math.pi
 
