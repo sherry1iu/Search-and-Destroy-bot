@@ -22,8 +22,8 @@ if __name__ == '__main__':
     rate = rospy.Rate(FREQUENCY)
     rospy.sleep(2)
 
-    data = np.load("../test_info/grid.npy")                                 # Load serialized map from file
-    with open("../test_info/grid_msg_info.txt", 'r') as fp:
+    data = np.load("./src/test_info/grid.npy")                                 # Load serialized map from file
+    with open("./src/test_info/grid_msg_info.txt", 'r') as fp:
         info = json.loads(fp.read())
     map_pub = rospy.Publisher(PUBLISH_TOPIC, OccupancyGrid, queue_size=1)
 

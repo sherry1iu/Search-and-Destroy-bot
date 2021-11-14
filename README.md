@@ -22,10 +22,17 @@ Generates a topological map of the environment from an occupancy grid. See the [
 
 ### restorer
 
-## Testing:
+## Environment Setup (Gazebo):
 If you have a working setup with Gazebo, you can do the following steps to view image data
 and similar:
 
+Pip Setup:
+```
+pip install scipy
+pip install scikit-image
+```
+
+Catkin Setup:
 ```
 cd ~/catkin_ws/src
 git clone https://github.com/husarion/rosbot_description
@@ -46,10 +53,24 @@ then select /camera/rgb/image_raw from the dropdown
 ```
 you will be able to see image data.
 
-Now run
+Now run (in separate terminals)
+Publish the map
 ```
-./src/patroller/patroller.py
+./src/utitilies/read_and_publish_map.py
+```
+Set up the graph server
+```
+./src/voronoi/graph_server.py
+```
+Run the patroller module
+```
+cd src/patroller
+./patroller.py
+Run the restorer module
+```
+cd src/restorer
 ./src/restorer/restorer.py
+```
 ./src/utilities/tf_map_publisher.py
 ```
 

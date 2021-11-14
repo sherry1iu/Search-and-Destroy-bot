@@ -1,4 +1,5 @@
-#!/usr/env python
+#!/usr/bin/env python
+
 # A ROS service that generates a topological map of a published occupancy grid
 # Author: Isaac Feldman, COSC 81 Fall 2021
 import json
@@ -107,11 +108,11 @@ class Server():
         :param graph: a list of dictionary graph elements
         :param coords: a list of coordinates of interest; the features in the graph image
         """
-      for node in graph:
-        x, y = node["x"], node["y"]
-        for neighbor in self.eight_neighbors((x, y), self._skel):
-          u, v = neighbor
-          self._traverse(neighbor, node, coords)
+        for node in graph:
+            x, y = node["x"], node["y"]
+            for neighbor in self.eight_neighbors((x, y), self._skel):
+              u, v = neighbor
+              self._traverse(neighbor, node, coords)
 
     def _traverse(self, start, home, coords):
           seen = set()
