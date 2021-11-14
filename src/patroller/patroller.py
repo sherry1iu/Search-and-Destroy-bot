@@ -67,7 +67,7 @@ class Patroller:
 
         if not is_test_mode:
             # the JSON string containing the graph; we get this from the graph solving service
-            self.raw_graph_string = self._graph_service_proxy(TriggerRequest())
+            self.raw_graph_string = self._graph_service_proxy(TriggerRequest()).message
             print("Raw graph string:")
             print self.raw_graph_string
 

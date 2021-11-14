@@ -47,7 +47,8 @@ class Server():
         resp = TriggerResponse()
         response_graph = json.dumps(self.compute_graph())
         resp.success = True
-        resp.message = response_graph 
+        resp.message = response_graph
+        print(response_graph)
         return resp
 
     def compute_graph(self):
@@ -55,6 +56,7 @@ class Server():
         while self._map is None:
             pass # block until we have a map
 
+        print("Computing the graph...")
         d, f = ndimage.distance_transform_edt(self._map, return_indices=True)
         mean = np.mean(d)
         self._skel = morphology.skeletonize(d > mean*THIN)
@@ -73,7 +75,7 @@ class Server():
         # Swap out the positions for the proper ids
         ids = {}
         for node in graph:
-          ids[(node["x"],node["y"])] = node["id"]
+          ids[(node["x"], node["y"])] = node["id"]
 
         for node in graph:
           new_neighbors = []
@@ -97,7 +99,7 @@ class Server():
       graph = []
       for c in coords:
         x, y = c
-        g = {"x":x, "y":y, "id":self._count, "neighbors":set()}
+        g = {"x": x, "y": y, "id": self._count, "neighbors": set()}
         graph.append(g)
         self._count += 1
       return graph
