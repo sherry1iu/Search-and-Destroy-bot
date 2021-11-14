@@ -10,6 +10,10 @@ Map an area and efficiently patrol it, while identifying and pursuing moving obj
 Each module may be separately triggered by running the file with the same name as the outer
 module.
 
+### Graph Server (voronoi)
+
+Generates a topological map of the environment from an occupancy grid. See the [module-specific README](./src/voronoi/README.md) for details.
+
 ### patroller
 
 ### Camera
