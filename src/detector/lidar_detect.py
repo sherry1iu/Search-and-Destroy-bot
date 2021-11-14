@@ -11,9 +11,10 @@ from sensor_msgs.msg import LaserScan                       # LIDAR
 from nav_msgs.msg import OccupancyGrid                      # Previously made occupancy grid
 from geometry_msgs.msg import PoseWithCovarianceStamped     # AMCL pose
 from tf.msg import tfMessage                                # AMCL transformation
+from std_msgs.msg import String                             # Mode
 
 #from std_msgsf.msg import Bool    
-from std_msgsf.msg import Float32     
+from std_msgs.msg import Float32     
 
 FREQUENCY = 10
 
@@ -36,19 +37,15 @@ class Lidar_detect:
         # Occupancy grid subscriber
         self.occu_sub = rospy.Subscriber(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid, self.occugrid_callback, queue_size=1)
 
-        # AMCL subscribers
+        # Pose from AMCL / localization node
         self.pose_sub = rospy.Subscriber(AMCL_POSE_TOPIC, PoseWithCovarianceStamped, self.pose_callback, queue_size = 1)
-
         
+        # Mode pub/sub
+        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
         self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
 
-
-        # Publishers
+        # Angle publisher
         self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
-
-
-        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
-
 
 
         # True until done testing. At which point it's false.
@@ -66,6 +63,7 @@ class Lidar_detect:
 
         self.mode_recieved = None
         self.mode_published = "patrolling"
+        self.prev_mode_pub = "None"
 
  
         self.data_ready = False
@@ -77,6 +75,7 @@ class Lidar_detect:
     def laser_callback(self, msg):
         
         self.data_ready = False
+        self.prev_mode_pub = self.mode_pub
         # Create transformation matrix for map_T_robot by using the robot's pose
         cos = math.cos(self.yaw)
         sin = math.sin(self.yaw)
@@ -143,12 +142,18 @@ class Lidar_detect:
             self.intruder_angle = int_angle
             self.mode_published = "chase"
         else:
+            if self.prev_mode_pub == "patrolling":
+                self.mode_published = "patrolling"
+            else:
+                self.mode_published = "localize"
             self.intruder = False
-            self.mode_published = "patrolling"#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # Later I may decide to add a "data ready", once the actual messages are set up.
             # In that case, then we can just change the intruder_detected straight inside the loop 
             # Then we'd get rid of int_angle and intruder_detected
             # But until then we should keep them to prevent early variables from being detected.
+        print("Laser callback finished.")
+
         
 
     def occugrid_callback(self, msg):
@@ -156,6 +161,7 @@ class Lidar_detect:
         "Index into this with [y][x]"
         self.grid = np.reshape(msg.data, (msg.info.height, msg.info.width))
         self.resolution = msg.info.resolution
+        print("Occugrid callback finished")
 
 
     def pose_callback(self, msg):
@@ -168,12 +174,17 @@ class Lidar_detect:
 
         quaternion = (pose_map.orientation.x, pose_map.orientation.y, pose_map.orientation.z, pose_map.orientation.w)
         self.yaw = tf.transformations.euler_from_quaternion(quaternion)[2]
+        print("Pose callback finished")
 
     
     def spin(self):
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
 
         while not rospy.is_shutdown():
+
+            msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
+            #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
+
 
             #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
 
@@ -183,8 +194,11 @@ class Lidar_detect:
 
             mode_msg = String()
             mode_msg.data = self.mode_published
-            self.mode_pub.publish(mode_msg)  
+            self.mode_pub.publish(mode_msg)
             
+            print("Angle, modes published, recieved")
+            print(self.intruder_angle, self.mode_published, self.mode_recieved)
+
             rate.sleep()
 
 def main():
