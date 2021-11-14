@@ -30,8 +30,8 @@ class Patroller:
     def __init__(self, is_live, is_test_mode):
         """Initialization function."""
         if is_test_mode:
-            self.mode = "restoring"
-            # self.mode = "patrolling"
+            # self.mode = "restoring"
+            self.mode = "patrolling"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     rospy.init_node("patroller")
 
     # 2nd. Creation of the class with relevant publishers/subscribers.
-    patroller = Patroller(is_live=False, is_test_mode=False)
+    patroller = Patroller(is_live=False, is_test_mode=True)
 
     # 3rd loop.
     patroller.main()

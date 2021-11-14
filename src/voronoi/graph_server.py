@@ -113,6 +113,9 @@ class Server():
         for node in graph:
             x, y = node["x"], node["y"]
             for neighbor in self.eight_neighbors((x, y), self._skel):
+                # TODO -- why is this sometimes None?
+              if not neighbor:
+                continue
               u, v = neighbor
               self._traverse(neighbor, node, coords)
 
@@ -126,6 +129,7 @@ class Server():
               if neighbor not in seen and neighbor is not None:
                 x, y = neighbor
                 seen.add(neighbor)
+                #TODO: some sort of overflow error here...
                 if self._skel[(y, x)] > 0:
                   q.append(neighbor)
                 if neighbor in coords and neighbor != (home["x"], home["y"]):
