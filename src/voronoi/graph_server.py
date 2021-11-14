@@ -3,11 +3,15 @@
 # Author: Isaac Feldman, COSC 81 Fall 2021
 import json
 from collections import deque
-import rospy
 import numpy as np
+
+# Image processing Imports
 from scipy import ndimage
 from skimage import morphology
 from skimage.feature import corner_harris, corner_peaks
+
+# ROS Imports
+import rospy
 from nav_msgs.msg import OccupancyGrid          # http://docs.ros.org/en/melodic/api/nav_msgs/html/msg/OccupancyGrid.html
 from std_srvs.srv import Trigger, TriggerResponse
 
@@ -46,6 +50,7 @@ class Server():
         return resp
 
     def compute_graph(self):
+        """ Compute a topological graph from the provided map """
         while self._map is None:
             pass # block until we have a map
 
@@ -97,6 +102,11 @@ class Server():
       return graph
 
     def _add_neighbors(self, graph, coords):
+        """ Use a simple depth first traversal to find the immediate neighbors of each node
+
+        :param graph: a list of dictionary graph elements
+        :param coords: a list of coordinates of interest; the features in the graph image
+        """
       for node in graph:
         x, y = node["x"], node["y"]
         for neighbor in self.eight_neighbors((x, y), self._skel):
@@ -109,7 +119,6 @@ class Server():
           q.append(start)
           while len(q) > 0:
             curr = q.pop()
-            #print(curr)
             for neighbor in self.eight_neighbors(curr, self._skel):
               if neighbor not in seen and neighbor is not None:
                 x, y = neighbor
