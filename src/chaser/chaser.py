@@ -1,5 +1,6 @@
 print("Chaser imported")
 import math 
+from enum import Enum
 
 import rospy # module for ROS APIs
 from geometry_msgs.msg import Twist # message type for cmd_vel
@@ -7,9 +8,9 @@ from geometry_msgs.msg import Twist # message type for cmd_vel
 import sys
 sys.path.append('../../')
 
-from src.utilities.move_to_point import *
+from src.utilities.move_to_point import move
 
-LINEAR_VELOCITY = .2 # m/s
+LINEAR_VELOCITY = .8 # m/s
 ANGULAR_VELOCITY = 0.5 # rad/s
 
 FREQUENCY = 10 #Hz.
@@ -17,11 +18,9 @@ FREQUENCY = 10 #Hz.
 DEFAULT_CMD_VEL_TOPIC = 'cmd_vel'
 
 # PD controller constants
-KP = 1.1     #1
-KD = 1     #1
-KI = 1.5     #1
-
-INTRUDER_ANG = 0
+KP = 1.1
+KI = -1.5
+KD = 1
 
 
 BOOL_TOPIC = "intruder"
@@ -39,67 +38,78 @@ class Chaser:
     def init(self, angvel = ANGULAR_VELOCITY, linvel = LINEAR_VELOCITY, \
              kp = KP, kd = KD, ki = KI):
     
-        # Pass into move
+        # Velocity publisher; passed into move function
         self.cmd_pub = rospy.Publisher(DEFAULT_CMD_VEL_TOPIC, Twist, queue_size=1)
 
-        # Find angle from lidar
+        # Find angle from lidar/camera
         self.float32_sub = rospy.Subscriber(FLOAT32_TOPIC, Float32, self.angle_callback, queue_size = 1)
 
-        # Subscribe to and publish nodes
+        # Find mode (overarching fsm)
         self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
-        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
+        self.mode = None
 
+
+        # PID Parameters
+
+        # P part
         self.kp = kp
-        self.kd = kd
-        self.ki = ki
+        self.intruder_angle = 0
 
+        # I part
+        self.ki = ki
+        self.err_sum = 0
+
+        # D part
+        self.kd = kd
         self.prev_error = 0
+        self.prev_angle = 0
         
+                
+        # Amount of movement
+        self.FSM = FSM.ROTATE_CALC
         self.linear_velocity = linvel
         self.angular_velocity_max = angvel
-
         self.angular_velocity = 0
-
-        self.intruder_angle = None
-
-        self.FSM = FSM.ROTATE_CALC
-
         
-        self.mode_recieved = None
-        self.mode_published = "patrolling"
 
         print("Chaser init done")
 
     
     def mode_callback(self, msg):
-        self.mode_recieved = msg.data
+        self.mode = msg.data
 
 
     def angle_callback(self, msg):
+        self.prev_angle = self.intruder_angle
         self.intruder_angle = msg.data
 
 
     def spin(self):
         
         while not rospy.is_shutdown():
-            if self.mode == "chase"
+            if self.mode == "chase":
                 #PID P
-                p_part = self.intruder_angle
-
+                p_part = self.kp * (self.intruder_angle)
                 
+                #PID I
+                i_part = self.ki * (self.err_sum)
 
                 #PID D
-                intruder_quadrant = self.intruder_angle // (self.width//5)
-                error = (intruder_quadrant / 2) * self.angular_velocity_max
-
-                # Calculate w using approximation of PD controller
-                self.angular_velocity = self.kp * error + self.kd * (error - self.prev_error) / (1 / float(FREQUENCY))
-
-                # Prepare for next D
-                self.prev_error = error
+                d_part = self.kd * (self.intruder_angle - self.prev_angle)
 
 
+                # Calculate w using approximation of PID controller
+                self.angular_velocity = p_part + i_part + d_part
+
+                # Move
                 move(self.linear_velocity, self.angular_velocity, self.cmd_pub)
+
+                # Prepare for next iteration
+                self.prev_angle = self.intruder_angle
+                self.err_sum = self.err_sum + (self.intruder_angle - self.prev_angle)
+
+
+
 
 
 def main():
@@ -109,7 +119,6 @@ def main():
     rospy.sleep(2)
  
     chaser = Chaser()
-    # Camera detects intruder in certain quadrant
     
     try:
         chaser.spin()
