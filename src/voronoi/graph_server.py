@@ -1,5 +1,8 @@
 #!/usr/env python
+# A ROS service that generates a topological map of a published occupancy grid
+# Author: Isaac Feldman, COSC 81 Fall 2021
 import json
+from collections import deque
 import rospy
 import numpy as np
 from scipy import ndimage
@@ -55,10 +58,11 @@ class Server():
         for c in corners:
           coords.append((c[1], c[0])) #x, y
 
-        # First do DFS to find the neighboring feature nodes
+        # First do a few traversal to find the neighboring feature nodes
 
-        graph = []
-        self.dfs(None, coords[0], graph, set(), coords)
+        graph = self._add_nodes(coords)
+        for i in range(10): # do this a few times
+          self._add_neighbors(graph, coords)
 
         # Swap out the positions for the proper ids
         ids = {}
@@ -83,23 +87,39 @@ class Server():
 
         return graph
 
-    def dfs(self, last, current, graph, seen, coords):
-      l = last
-      seen.add(current)
-      if current in coords:
-        x, y = current
-        g = {"x":x, "y":y, "id":self._count, "neighbors":[last]}
-        if last is None:
-          g["neighbors"] = []
+    def _add_nodes(self, coords):
+      graph = []
+      for c in coords:
+        x, y = c
+        g = {"x":x, "y":y, "id":self._count, "neighbors":set()}
         graph.append(g)
         self._count += 1
-        l = current
-      for n in self.eight_neighbors(current, self._skel):
-        if n is None: # wtf?
-            return
-        x, y = n
-        if self._skel[(y, x)] > 0 and (x, y) not in seen:
-          self.dfs(l, n, graph, seen, coords)
+      return graph
+
+    def _add_neighbors(self, graph, coords):
+      for node in graph:
+        x, y = node["x"], node["y"]
+        for neighbor in self.eight_neighbors((x, y), self._skel):
+          u, v = neighbor
+          self._traverse(neighbor, node, coords)
+
+    def _traverse(self, start, home, coords):
+          seen = set()
+          q = deque()
+          q.append(start)
+          while len(q) > 0:
+            curr = q.pop()
+            #print(curr)
+            for neighbor in self.eight_neighbors(curr, self._skel):
+              if neighbor not in seen and neighbor is not None:
+                x, y = neighbor
+                seen.add(neighbor)
+                if self._skel[(y, x)] > 0:
+                  q.append(neighbor)
+                if neighbor in coords and neighbor != (home["x"], home["y"]):
+                  home["neighbors"].add(neighbor)
+                  return
+
 
     def eight_neighbors(self, c, map):
       """ Return the indices of the neighboring pixels 
