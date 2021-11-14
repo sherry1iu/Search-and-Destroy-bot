@@ -1,7 +1,9 @@
 print("LIDAR has been imported.")
+
 import math 
 import numpy as np
 import tf
+from enum import Enum
 
 import rospy # module for ROS APIs
 
@@ -10,28 +12,23 @@ from nav_msgs.msg import OccupancyGrid                      # Previously made oc
 from geometry_msgs.msg import PoseWithCovarianceStamped     # AMCL pose
 from tf.msg import tfMessage                                # AMCL transformation
 
+#from std_msgsf.msg import Bool    
+from std_msgsf.msg import Float32     
 
-#from nav_msgs.msg import Odometry
-
-
+FREQUENCY = 10
 
 DEFAULT_OCCUGRID_TOPIC = "map"
-#DEFAULT_ODOM_TOPIC = "odom"
-
-##DEFAULT_SCAN_TOPIC = 'scan'
-##LASER_TOPIC = 'laser'
 DEFAULT_SCAN_TOPIC = 'base_scan'
-
-# Ngl not sure what this is used for ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LASER_TOPIC = 'base_laser_link'
 
 # AMCL Topics
 AMCL_POSE_TOPIC = "amcl_pose"
-#TF_TOPIC = "tf"         #I might end up not actually using this
+
+FLOAT32_TOPIC = "angle"
+MODE_TOPIC = "mode"
 
 
 class Lidar_detect:  
-    def __init__(self, robx = 0, roby = 0):        
+    def __init__(self, robx = 0, roby = 0):   # Delete these parameters once we're testing wiht topics.     
 
         # Laser subscriber from LIDAR
         self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
@@ -41,11 +38,19 @@ class Lidar_detect:
 
         # AMCL subscribers
         self.pose_sub = rospy.Subscriber(AMCL_POSE_TOPIC, PoseWithCovarianceStamped, self.pose_callback, queue_size = 1)
-        #self.tf_sub = rospy.Subscriber(TF_TOPIC, tfMessage, self.tf_callback, queue_size = 1)
 
-
-        # Instance variables
         
+        self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
+
+
+        # Publishers
+        self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
+
+
+        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
+
+
+
         # True until done testing. At which point it's false.
         self.intruder = True #False
         self.intruder_angle = 0
@@ -57,15 +62,21 @@ class Lidar_detect:
         self.robx = robx
         self.roby = roby
         self.yaw = 0
-        #self.odom_trans = 0
-        #self.odom_rot = 0
+
+
+        self.mode_recieved = None
+        self.mode_published = "patrolling"
 
  
+        self.data_ready = False
         print("LIDAR init finished.")
 
+    def mode_callback(self, msg):
+        self.mode_recieved = msg.data
 
     def laser_callback(self, msg):
         
+        self.data_ready = False
         # Create transformation matrix for map_T_robot by using the robot's pose
         cos = math.cos(self.yaw)
         sin = math.sin(self.yaw)
@@ -130,8 +141,10 @@ class Lidar_detect:
         if intruder_detected:
             self.intruder = True
             self.intruder_angle = int_angle
+            self.mode_published = "chase"
         else:
-            self.intruder = False#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            self.intruder = False
+            self.mode_published = "patrolling"#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # Later I may decide to add a "data ready", once the actual messages are set up.
             # In that case, then we can just change the intruder_detected straight inside the loop 
             # Then we'd get rid of int_angle and intruder_detected
@@ -155,35 +168,44 @@ class Lidar_detect:
 
         quaternion = (pose_map.orientation.x, pose_map.orientation.y, pose_map.orientation.z, pose_map.orientation.w)
         self.yaw = tf.transformations.euler_from_quaternion(quaternion)[2]
-        
 
-        
+    
     def spin(self):
-        return(self.intruder, self.intruder_angle)
+        rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
+
+        while not rospy.is_shutdown():
+
+            #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
+
+            float32_msg = Float32()
+            float32_msg.data = self.intruder_angle
+            self.float32_pub.publish(float32_msg)
+
+            mode_msg = String()
+            mode_msg.data = self.mode_published
+            self.mode_pub.publish(mode_msg)  
+            
+            rate.sleep()
+
+def main():
+    """Main function."""
+
+    # 1st. initialization of node.
+    rospy.init_node("lidar_detect")
+
+    # Sleep for a few seconds to wait for the registration.
+    rospy.sleep(2)
+
+    # Initialization of the class
+    ld_dt = Lidar_detect()
+
+    # Robot publishes map.
+    try:
+        ld_dt.spin()
+    except rospy.ROSInterruptException:
+        rospy.logerr("ROS node interrupted.")
 
 
-
-    '''
-
-    I might not actually need odom to map transformations. 
-    Keep this in case for now, but comment it out.
-
-    def tf_callback(self, msg):
-        # Odom to map
-
-        odom_T_map = msg.transforms.transform
-        
-        self.odom_trans = (odom_T_map.translation.x, odom_T_map.translation.y) # z is always 0
-
-        quaternion = (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w)
-        self.odom_rot = tf.transformations.euler_from_quaternion(quaternion)[2]
-    '''
-
-"""
-To test this:
-
-publish an occupancy grid (PA3)
-get the pose straight from the initial stuff from initial position in PA3. Or see if their pose_stamped works
-
-
-"
+if __name__ == "__main__":
+    """Run the main function."""
+    main()
