@@ -160,7 +160,7 @@ class Localizer():
                             self.possible_positions.append(Position(x, y, -angles[0]))
         else:
             # if possible positions have been previously computed, only choose among those
-            for position in self.possible_positions:
+            for pos_i, position in enumerate(self.possible_positions):
                 # calculate new position robot must be in based on last rotation/translation
                 new_x = int(position.x + math.cos(position.theta) * self.last_translation)
                 new_y = int(position.y + math.sin(position.theta) * self.last_translation)
@@ -186,15 +186,20 @@ class Localizer():
                 # remove possible positions if error is above threshold
                 if sum_squared_errors > self.error_threshold:
                     self.possible_positions.remove(position)
+                else:
+                    # update new position
+                    self.possible_positions[pos_i].x = new_x
+                    self.possible_positions[pos_i].y = new_y
+                    self.possible_positions[pos_i].theta = new_theta
 
         print("possible positions: ")
         for position in self.possible_positions:
             print("x: {}, y: {}, theta: {}".format(position.x, position.y, position.theta))
 
         # stop if localized / no possible positions
-        if len(self.possible_positions) <= 1:
+        if len(self.possible_positions) <= 2:
             self.state = fsm.STOP
-            self.final_pos = self.possible_positions[0]
+            self.final_pose = Position(self.possible_positions[0].x * self.grid.resolution, self.possible_positions[0].y * self.grid.resolution, self.possible_positions[0].theta)
             self.mode_publisher("restoring")
             return
 
