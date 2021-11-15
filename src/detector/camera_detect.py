@@ -263,6 +263,9 @@ class Camera_detect:
             
                 print("Intruder angle: " + str(60*self.intruder_angle))
 
+                print("Publishing mode:")
+                print(self.mode_published)
+
                 mode_msg = String()
                 mode_msg.data = self.mode_published
                 self.mode_pub.publish(mode_msg)

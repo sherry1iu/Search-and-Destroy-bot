@@ -36,7 +36,7 @@ FLOAT32_TOPIC = "angle"
 MODE_TOPIC = "mode"
 
 # the range at which to restore back onto the graph
-RESTORE_RANGE = 0.30
+RESTORE_RANGE = 0.4
 
 
 class Lidar_detect:

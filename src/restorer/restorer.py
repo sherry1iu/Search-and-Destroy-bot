@@ -48,7 +48,7 @@ class Restorer:
         self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
 
         # Callback for the occupancy grid
-        self.grid_subscriber = rospy.Subscriber("map", OccupancyGrid, self.grid_callback)
+        self.grid_subscriber = rospy.Subscriber("blur_map", OccupancyGrid, self.grid_callback)
         # this will be populated with the data from the grid
         self.grid_msg = None
         # this is the grid converted into a double-nested array
@@ -82,8 +82,10 @@ class Restorer:
 
     def mode_callback(self, msg):
         """The callback for switching modes"""
-        if msg.data is "patrolling" and self.mode is not "patrolling":
+        print("New mode is: " + msg.data)
+        if msg.data is "restoring" and self.mode is not "restoring":
             # we will want to re-plan, because we may be at a new location on the graph
+            print("We want to re-plan")
             self.should_plan = True
         self.mode = msg.data
 
@@ -104,6 +106,8 @@ class Restorer:
         """Makes a plan to get the robot back onto the graph"""
         if self.grid_arrays is None:
             return
+
+        print("Planning route back to the graph")
 
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         node_array = []
@@ -136,6 +140,8 @@ class Restorer:
 
     def restore(self):
         """Executes the plan for returning to the graph"""
+        print("Restoring back to the graph")
+
         if len(self.path_points_to_visit) is 0:
             # if we've run out of points, we are now on the graph
             self.publish_mode("patrolling")
@@ -166,7 +172,7 @@ class Restorer:
         """Loops; triggers BFS to restore the robot to one of the nodes on the graph"""
         rate = rospy.Rate(FREQUENCY) # loop at 10 Hz.
         while not rospy.is_shutdown():
-            if self.mode is "restoring":
+            if self.mode == "restoring":
                 if self.should_plan:
                     print("Planning restoration to the graph...")
                     self.plan()
