@@ -9,12 +9,16 @@ from enum import Enum
 
 import rospy # module for ROS APIs
 
+from geometry_msgs.msg import Point                         # For visualization of error/object locations
+from sensor_msgs.msg import PointCloud                      # For visualization of error/object locations
 from sensor_msgs.msg import LaserScan                       # LIDAR
 from nav_msgs.msg import OccupancyGrid                      # Previously made occupancy grid
 from geometry_msgs.msg import PoseWithCovarianceStamped     # AMCL pose
 from tf.msg import tfMessage                                # AMCL transformation
 from std_msgs.msg import String                             # Mode
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point
+from sensor_msgs.msg import PointCloud
 
 #from std_msgsf.msg import Bool
 from std_msgs.msg import Float32
@@ -63,6 +67,8 @@ class Lidar_detect:
         rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
         rospy.wait_for_message(DEFAULT_ODOM_TOPIC, Odometry)
 
+        self.error_pub = rospy.Publisher('errors', PointCloud, queue_size=10)
+
         if is_live:
             self.subscriber = rospy.Subscriber("scan", LaserScan, self.laser_callback)
             self.laser_frame = "laser"
@@ -100,6 +106,13 @@ class Lidar_detect:
         quaternion = (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w)
         self.odom_rot = tf.transformations.euler_from_quaternion(quaternion)[2]
 
+    def publish_errors(self, point_array):
+        """Publishes all the error points detected by the LIDAR"""
+        cloud = PointCloud()
+        cloud.header.frame_id = "map"
+        cloud.points = point_array
+        self.error_pub.publish(cloud)
+
 
     def mode_callback(self, msg):
         self.mode_recieved = msg.data
@@ -122,6 +135,8 @@ class Lidar_detect:
         count = 0
         max_count = 0
         not_printed = True
+        error_array = []
+
 
         for i in range(len(msg.ranges)):
             scan_range = msg.ranges[i]
@@ -158,6 +173,7 @@ class Lidar_detect:
                     y_max = y
                     max_count += 1
 
+
                 # If the x or y falls outside range, skip it.
                 if (x < len(self.grid[0])) and (y < len(self.grid)):
 
@@ -166,6 +182,12 @@ class Lidar_detect:
                     # If there is no obstacle in the grid but it has been detected here
                     if self.grid[y][x] != 100:
                         err_count = err_count + 1
+
+                        error_point = Point()
+                        error_point.x = new_vertex_np[0] 
+                        error_point.y = new_vertex_np[1]
+                        error_point.z = 0.5
+                        error_array.append(error_point)
 
                         #print(mapx, mapy)
 
@@ -183,7 +205,6 @@ class Lidar_detect:
 
                         # If multiple intruders detected, just go after the final one
                         int_angle = scan_angle
-                        print("We have found this many obs:" + str(err_count))
 
                     #else:
                         #err_count = 0
@@ -193,8 +214,12 @@ class Lidar_detect:
                 #    print(self.robx, self.roby, self.yaw)
                 #    while True:
 
-                        #pass
+                        #pass\
 
+        self.publish_errors(error_array)
+
+        print("Error count:")
+        print(err_count)
         print(count)
         print(max_count)
         print(i_max, x_max, y_max)
