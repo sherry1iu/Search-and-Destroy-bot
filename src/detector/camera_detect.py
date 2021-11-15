@@ -3,8 +3,7 @@ import numpy as np
 import cv2
 
 import sys
-print(sys.path)
-#import color_tracker
+#print(sys.path)
 
 import rospy # module for ROS APIs
 from sensor_msgs.msg import CompressedImage
@@ -13,6 +12,9 @@ from sensor_msgs.msg import CompressedImage
 from scipy.ndimage import filters
 import roslib
 import sys, time
+
+from std_msgs.msg import Float32
+from std_msgs.msg import String                             # Mode
 
 
 import sys
@@ -23,13 +25,25 @@ from src.utilities.move_to_point import *
 
 #DEFAULT_CAMERA_TOPIC = "/camera/rgb/image_raw/compressed"
 #DEFAULT_CAMERA_TOPIC = "/image_publisher_1636692042732699800/image_raw/compressed"
-DEFAULT_CAMERA_TOPIC = "/image_publisher_1636697989944373400/image_raw/compressed"
+DEFAULT_CAMERA_TOPIC = "/image_publisher_1636971033280210000/image_raw/compressed"
 
-YELLOW_DULLEST = [149, 157, 7]
+
+FLOAT32_TOPIC = "angle"
+MODE_TOPIC = "mode"
+
+YELLOW_DULLEST = [149, 157, 53]
 YELLOW_BRIGHTEST = [237, 250, 1]
+
+
 
 GREY_DULLEST = [116,106,96]
 GREY_BRIGHTEST = [250, 233, 217]
+
+ORANGE_BRIGHTEST = [153, 44, 19]
+ORANGE_MED = [89, 36, 19]
+ORANGE_DULLEST = [59, 26, 11]
+
+
 
 # Size of rosbot camera and of mask
 HEIGHT = 480
@@ -55,7 +69,7 @@ https://www.geeksforgeeks.org/python-opencv-imdecode-function/
 
 
 
-
+"Get rid of themode sub right now. We'll have to put it back eventually but not yet"
 
 
 
@@ -67,82 +81,179 @@ class Camera_detect:
 
         self.image_pub = rospy.Publisher("/output/image_raw/compressed", CompressedImage, queue_size=1)
 
-        self.testvar = None
-        self.obstacle = False
-        self.intruder_mid = None
+        # Mode pub/sub
+        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
+        self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
 
-        print("Camera init done")
+        # Angle publisher
+        self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
+
+        self.intruder_mid = None
+        
+        self.mode_recieved = "patrolling"
+        #self.mode_recieved = "chaser"
+        #self.mode_recieved = "localizing"
+
+
+        self.mode_published = None
+        self.intruder_angle = 0
+
+        # Init as this, even though it's wrong. We'll update it after presentation (Actually changed in program in  callback)
+        self.height = HEIGHT
+        self.width = WIDTH
+
+        #print("Camera init done")
+
+        self.data_ready = False
+
+    def mode_callback(self, msg):
+        self.mode_recieved = msg.data
 
     def camera_callback(self, msg):
-
-        # Turns message into a numpy array
+        """
+        Read like this
+        ---------> + x
+        |
+        |
+        v
+        +y
+        """
+        self.data_ready = False
+            # Turns message into a numpy array
         np_arr = np.fromstring(msg.data, np.uint8)
         self.testvar = 1
-        print("Started\n")
+        #print("Started Camera callback")
 
         # Turn the np image into a cv2 image (image array)
-        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        print(len(image))
-        print(len(image[1]))
+        BGR_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(BGR_image, cv2.COLOR_BGR2RGB)
+        #print(len(image))
+        self.height = len(image)
+        #print(len(image[1]))
+        self.width = len(image[1])
 
         # Tuples of (rgb turned into list)
-        boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST), (GREY_DULLEST, GREY_BRIGHTEST)]
+        #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST), (GREY_DULLEST, GREY_BRIGHTEST)]
+        boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
+        #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
 
-        for (lower, upper) in boundaries:
+        #for (lower, upper) in boundaries:
+        lower = boundaries[0][0]
+        upper = boundaries[0][1]
+        '''
+        if lower[0] == 149:
+            grey = True
+        else:
+            grey = False
+        '''
 
-            if lower[0] == 149:
-                grey = True
-            else:
-                grey = False
+        ## create NumPy arrays from the boundaries
+        lower = np.array(lower, dtype = "uint8")
+        upper = np.array(upper, dtype = "uint8")
+        
+        ## find the colors within the specified boundaries and apply mask
+        mask = cv2.inRange(image, lower, upper)
+        #print(mask.shape)
+        #print(sum(sum(mask)))
 
+        #print(image[70][70])
 
-            ## create NumPy arrays from the boundaries
-            lower = np.array(lower, dtype = "uint8")
-            upper = np.array(upper, dtype = "uint8")
-            
-            ## find the colors within the specified boundaries and apply mask
-            mask = cv2.inRange(image, lower, upper)
-            
-            if grey:
-                print("Iran 77")
-                print("grey detected" + str(sum(sum(mask))))
-            else:
-                print("Iran 80")
-                print("yellow detected" + str(sum(sum(mask))))
+        #print(len(sum(mask)))
+        #print(sum(sum(mask)))
+            # If enough orange found
+        if sum(sum(mask)) > 20:
 
-            
-            "IF A LOT OF YELLOW, NEXT TO GREY"################################################################
-            if True:
-                self.obstacle = True
-                rightmost = -1
-                leftmost = float('inf')
-                for i in sum(mask):
+            self.obstacle = True
+
+            rightmost = -1
+            leftmost = float('inf')
+
+            zerocount = 0
+            two55c = 0
+            othercount = 0
+            for i in range(len(sum(mask))):
+                # Sum of mask is 
+                #print(sum(mask[i]))
+                if sum(mask)[i] > 20:
                     if i > rightmost:
                         rightmost = i
-                    elif i < leftmost:
+                    if i < leftmost:
                         leftmost = i
-                
-                ######################################################
-                self.intruder_mid = (rightmost + leftmost)/2
-            else:
-                self.obstacle = False
+                if sum(mask)[i] == 0:
+                    zerocount += 1
+                elif sum(mask)[i] == 255:
+                    two55c += 1
+                    
+                else:
+                    othercount += 1
+                    #print(sum(mask)[i])
+            ######################################################
+            self.intruder_mid = (rightmost + leftmost)/2
+            '''
+            print(182)
+            print(leftmost, rightmost)
+            print(zerocount, two55c, othercount)
+            '''
+        else:
+            self.obstacle = False
+
+        #self.obstacle = False########################################
+        self.data_ready = True
+        #print("End of callback")
             
 
 
     def spin(self):
+
+        total = math.pi/2
+        msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
         while not rospy.is_shutdown():
-            msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
+        
 
             ############################################################################################
-            if self.obstacle:
-                "ROS SERVICE CALL MIDDLE OF DETECTED OBSTACLE MEDIAN"
-                "ROS SERVICE CALL STATE REMAINS AT CHASE"
-                pass
-            else:
-                "ROS SERVICE CALL STATE IS LOCALIZE"
+            if self.data_ready:
+                if self.obstacle:
+                    
+                    """MATH FOR ANGLE"""
+                    #print(self.width)
+                    #print(self.intruder_mid)
+                    fraction_location = float(self.intruder_mid) / self.width
+                    #print(fraction_location)
+                    if fraction_location < .5:
+                        fraction_location = fraction_location * -1
+                    self.intruder_angle = total * fraction_location
+
+                    self.mode_published = "chaser"
+                    
+                    #print(self.intruder_angle)
+                    
+                    
+                    #print(self.mode_published)
+                    print((self.mode_published, self.intruder_angle))
+
+                    
+
+                else:
+                    self.intruder_angle = 0
+
+                    if self.mode_recieved == "patrolling":
+                        self.mode_published = "patrolling"
+                    else:
+                        self.mode_published = "localizing"
+                    print(self.mode_published)
+                    print(self.intruder_angle)
+
+            
             
 
-                pass
+
+            mode_msg = String()
+            mode_msg.data = self.mode_published
+            self.mode_pub.publish(mode_msg)
+
+            float32_msg = Float32()
+            float32_msg.data = self.intruder_angle
+            self.float32_pub.publish(float32_msg)
 
 
 
@@ -152,12 +263,12 @@ def main():
     # # Wait for setup
     rospy.sleep(2)
  
-    follower = Camera_detect()
+    camdet = Camera_detect()
 
 
 
     try:
-        follower.spin()
+        camdet.spin()
     except rospy.ROSInterruptException:
         rospy.logerr("ROS node interrupted.")
     
