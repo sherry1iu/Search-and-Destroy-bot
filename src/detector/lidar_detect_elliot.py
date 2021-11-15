@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 print("LIDAR has been imported.")
 
 import math
@@ -62,10 +64,10 @@ class Lidar_detect:
         rospy.wait_for_message(DEFAULT_ODOM_TOPIC, Odometry)
 
         if is_live:
-            self.subscriber = rospy.Subscriber("scan", LaserScan, self.laserscan_callback)
+            self.subscriber = rospy.Subscriber("scan", LaserScan, self.laser_callback)
             self.laser_frame = "laser"
         else:
-            self.subscriber = rospy.Subscriber("base_scan", LaserScan, self.laserscan_callback)
+            self.subscriber = rospy.Subscriber("base_scan", LaserScan, self.laser_callback)
             self.laser_frame = "base_laser_link"
 
 
@@ -107,12 +109,12 @@ class Lidar_detect:
         self.msg = msg
 
     def laser_fx(self, msg):
-        (trans, rot) = self.listener.lookupTransform('odom', self.laser_frame, rospy.Time(0))
+        (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
         t = tf.transformations.translation_matrix(trans)
         R = tf.transformations.quaternion_matrix(rot)
 
         odom_T_laserFrame = t.dot(R)
-        # baseLink_T_odom = numpy.linalg.inv(odom_T_laserFrame)
+        # baseLink_T_odom = np.linalg.inv(odom_T_laserFrame)
 
         err_count = 0
         intruder_detected = False
@@ -121,24 +123,24 @@ class Lidar_detect:
         max_count = 0
         not_printed = True
 
-        for i in range(len(laserscan_msg.ranges)):
-            scan_range = laserscan_msg.ranges[i]
-            scan_angle = laserscan_msg.angle_min + i * laserscan_msg.angle_increment
+        for i in range(len(msg.ranges)):
+            scan_range = msg.ranges[i]
+            scan_angle = msg.angle_min + i * msg.angle_increment
 
             if (scan_range > msg.range_min) and (scan_range < msg.range_max):
                 # get the position in the ref frame of the robot
                 target_location = {"x": scan_range * math.cos(scan_angle), "y": scan_range * math.sin(scan_angle)}
                 # get the position in the odom ref frame
                 new_vertex_np = odom_T_laserFrame.dot(
-                    numpy.array([target_location["x"], target_location["y"], 0, 1])
+                    np.array([target_location["x"], target_location["y"], 0, 1])
                         )
 
                 #count = count + 1
 
-                x = int((new_vertex_np[0] - laserscan_msg.origin.position.x) / self.resolution)
-                y = int((new_vertex_np[1] - laserscan_msg.origin.position.y) / self.resolution)
+                x = int((new_vertex_np[0] - self.origin.position.x) / self.resolution)
+                y = int((new_vertex_np[1] - self.origin.position.y) / self.resolution)
 
-                # curr_range = msg.ranges[i] + .2
+                # scan_range = msg.ranges[i] + .2
 
                 #print(x, y, self.grid[x][y])
                 if self.grid[y][x] == 0:
@@ -146,11 +148,11 @@ class Lidar_detect:
                         print("Start here")
                         print(x, y)
                         print(i)
-                        print(curr_range)
+                        print(scan_range)
                         not_printed = False
                     count += 1
                     #print(i)
-                    #print(curr_range)
+                    #print(scan_range)
                     i_max = i
                     x_max = x
                     y_max = y
@@ -180,15 +182,14 @@ class Lidar_detect:
 
 
                         # If multiple intruders detected, just go after the final one
-                        int_angle = curr_angle
+                        int_angle = scan_angle
                         print("We have found this many obs:" + str(err_count))
 
                     #else:
                         #err_count = 0
                 #else:
                     #print("(" + str(x) + ", " + str(y) + ") skipped")
-                print(11111111111)
-                #if (curr_angle > 45*math.pi/180):
+                #if (scan_angle > 45*math.pi/180):
                 #    print(self.robx, self.roby, self.yaw)
                 #    while True:
 
@@ -219,7 +220,7 @@ class Lidar_detect:
 
         #print(count)
         print("finished")
-        prin(self.mode_published)
+        print(self.mode_published)
         print(self.intruder)
         print(intruder_detected)
         #while True:
@@ -304,7 +305,7 @@ def main():
     rospy.sleep(2)
 
     # Initialization of the class
-    ld_dt = Lidar_detect(is_live=False)
+    ld_dt = Lidar_detect(is_live=True)
 
     # Robot publishes map.
     try:

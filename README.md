@@ -32,7 +32,7 @@ pip install scipy
 pip install scikit-image
 ```
 
-Catkin Setup:
+Catkin Setup (Assumes working catkin_ws):
 ```
 cd ~/catkin_ws/src
 git clone https://github.com/husarion/rosbot_description
