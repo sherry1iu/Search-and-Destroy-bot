@@ -168,7 +168,6 @@ class Lidar_detect:
                     count += 1
                     #print(i)
                     #print(scan_range)
-                    i_max = i
                     x_max = x
                     y_max = y
                     max_count += 1
@@ -222,7 +221,6 @@ class Lidar_detect:
         print(err_count)
         print(count)
         print(max_count)
-        print(i_max, x_max, y_max)
         #print(len(msg.ranges))
         if intruder_detected:
             self.intruder = True

@@ -29,7 +29,16 @@ if __name__ == '__main__':
     data = np.load("./src/test_info/grid.npy")                                 # Load serialized map from file
     with open("./src/test_info/grid_msg_info.txt", 'r') as fp:
         info = json.loads(fp.read())
-    blurred_data = 100 * ndimage.binary_dilation(data)
+
+    # do several reshapes and blur to allow blurring in two dimensions
+    print(int(info["info"]["height"]), int(info["info"]["width"]))
+    blurred_data = np.reshape(
+        100 * ndimage.binary_dilation(
+            np.reshape(data, (int(info["info"]["height"]), int(info["info"]["width"]))), 
+            iterations=10
+        ),
+        info["info"]["height"] * info["info"]["width"]
+    )
 
     static_map_pub = rospy.Publisher(PUBLISH_TOPIC, OccupancyGrid, queue_size=1)
     blurred_map_pub = rospy.Publisher(BLUR_TOPIC, OccupancyGrid, queue_size=1)
