@@ -148,7 +148,7 @@ class Lidar_detect:
                 # get the position in the odom ref frame
                 new_vertex_np = odom_T_laserFrame.dot(
                     np.array([target_location["x"], target_location["y"], 0, 1])
-                        )
+                )
 
                 #count = count + 1
 
@@ -224,7 +224,8 @@ class Lidar_detect:
         #print(len(msg.ranges))
         if intruder_detected:
             self.intruder = True
-            self.intruder_angle = int_angle
+            # transform the angle back to the correct reference frame
+            self.intruder_angle = tf.transformations.euler_from_quaternion(R)[2] + int_angle
             self.mode_published = "chaser"
         else:
             if self.prev_mode_pub == "chaser":
@@ -249,9 +250,6 @@ class Lidar_detect:
         #while True:
         #    pass
         #    self.marker_pub.publish(marker_msg)
-
-
-
 
 
         self.test_callbacks[1] = "1"
