@@ -23,17 +23,16 @@ sys.path.append('../../')
 from src.utilities.move_to_point import *
 #from src.utilities.move_to_point import *
 
-#DEFAULT_CAMERA_TOPIC = "/camera/rgb/image_raw/compressed"
+DEFAULT_CAMERA_TOPIC = "/camera/rgb/image_raw/compressed"
 #DEFAULT_CAMERA_TOPIC = "/image_publisher_1636692042732699800/image_raw/compressed"
-DEFAULT_CAMERA_TOPIC = "/image_publisher_1636971033280210000/image_raw/compressed"
+#DEFAULT_CAMERA_TOPIC = "/image_publisher_1636973670731858300/image_raw/compressed"
 
 
 FLOAT32_TOPIC = "angle"
 MODE_TOPIC = "mode"
 
-YELLOW_DULLEST = [149, 157, 53]
-YELLOW_BRIGHTEST = [237, 250, 1]
-
+YELLOW_DULLEST = [149, 157, 31]
+YELLOW_BRIGHTEST = [255,253,140]
 
 
 GREY_DULLEST = [116,106,96]
@@ -122,7 +121,7 @@ class Camera_detect:
             # Turns message into a numpy array
         np_arr = np.fromstring(msg.data, np.uint8)
         self.testvar = 1
-        #print("Started Camera callback")
+        print("Started Camera callback")
 
         # Turn the np image into a cv2 image (image array)
         BGR_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -134,8 +133,8 @@ class Camera_detect:
 
         # Tuples of (rgb turned into list)
         #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST), (GREY_DULLEST, GREY_BRIGHTEST)]
-        boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
-        #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
+        #boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
+        boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
 
         #for (lower, upper) in boundaries:
         lower = boundaries[0][0]
@@ -208,28 +207,34 @@ class Camera_detect:
         total = math.pi/2
         msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
         while not rospy.is_shutdown():
-        
-
+            
+            print("Iran 211")
             ############################################################################################
-            if self.data_ready:
+            #if self.data_ready:
+            if True:
+                #print("2144444")
                 if self.obstacle:
-                    
+                    #print("216666")
                     """MATH FOR ANGLE"""
                     #print(self.width)
                     #print(self.intruder_mid)
                     fraction_location = float(self.intruder_mid) / self.width
                     #print(fraction_location)
-                    if fraction_location < .5:
-                        fraction_location = fraction_location * -1
-                    self.intruder_angle = total * fraction_location
+                    
+                    #if fraction_location < .5:
+                    #    fraction_location = fraction_location * -1
+                    self.intruder_angle = (total * fraction_location) - (total)/2
 
                     self.mode_published = "chaser"
+                    '''
+                    print(self.intruder_angle*60)
+                    print(total * fraction_location*60)
                     
-                    #print(self.intruder_angle)
+
                     
                     
-                    #print(self.mode_published)
-                    print((self.mode_published, self.intruder_angle))
+                    print(self.mode_published)
+                    '''
 
                     
 
@@ -240,20 +245,21 @@ class Camera_detect:
                         self.mode_published = "patrolling"
                     else:
                         self.mode_published = "localizing"
-                    print(self.mode_published)
-                    print(self.intruder_angle)
+                    #print(self.mode_published)
+                    #print(self.intruder_angle)
 
             
-            
+                print((self.mode_published, 60*self.intruder_angle))
 
 
-            mode_msg = String()
-            mode_msg.data = self.mode_published
-            self.mode_pub.publish(mode_msg)
 
-            float32_msg = Float32()
-            float32_msg.data = self.intruder_angle
-            self.float32_pub.publish(float32_msg)
+                mode_msg = String()
+                mode_msg.data = self.mode_published
+                self.mode_pub.publish(mode_msg)
+
+                float32_msg = Float32()
+                float32_msg.data = self.intruder_angle
+                self.float32_pub.publish(float32_msg)
 
 
 
