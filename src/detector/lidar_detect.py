@@ -35,8 +35,6 @@ class Lidar_detect:
 
         self.test_callbacks = ["mode", "laser", "occugrid", "pose", "odom"]
 
-        # Laser subscriber from LIDAR
-        self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
 
         # Occupancy grid subscriber
         self.occu_sub = rospy.Subscriber(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid, self.occugrid_callback, queue_size=1)
@@ -78,7 +76,9 @@ class Lidar_detect:
 
         self.data_ready = False
 
-
+        # move this down so that laser doesn't start early
+        # Laser subscriber from LIDAR
+        self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
 
         print("LIDAR init finished.")
 
@@ -90,7 +90,6 @@ class Lidar_detect:
 
         self.data_ready = False
         self.prev_mode_pub = self.mode_pub
-        print("Laser callback started")
         # Create transformation matrix for map_T_robot by using the robot's pose
         cos = math.cos(self.yaw)
         sin = math.sin(self.yaw)
@@ -162,10 +161,11 @@ class Lidar_detect:
             self.intruder_angle = int_angle
             self.mode_published = "chase"
         else:
-            if self.prev_mode_pub == "patrolling":
-                self.mode_published = "patrolling"
-            else:
+            if self.prev_mode_pub == "chase":
                 self.mode_published = "localizing"
+            else:
+
+                self.mode_published = "patrolling"
             self.intruder = False
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             # Later I may decide to add a "data ready", once the actual messages are set up.
