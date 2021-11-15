@@ -36,7 +36,7 @@ FLOAT32_TOPIC = "angle"
 MODE_TOPIC = "mode"
 
 # the range at which to restore back onto the graph
-RESTORE_RANGE = 15
+RESTORE_RANGE = 0.30
 
 
 class Lidar_detect:
@@ -85,7 +85,8 @@ class Lidar_detect:
         self.origin = None
 
         self.mode_recieved = None
-        self.mode_published = "patrolling"
+        self.mode_published = "restoring"
+        self.prev_mode_pub = "restoring"
         self.prev_mode_pub = "None"
 
         self.msg = None
@@ -322,9 +323,11 @@ class Lidar_detect:
                 # float32_msg.data = self.intruder_angle
                 # self.float32_pub.publish(float32_msg)
 
-                mode_msg = String()
-                mode_msg.data = self.mode_published
-                self.mode_pub.publish(mode_msg)
+                if self.prev_mode_pub != self.mode_published:
+                    mode_msg = String()
+                    mode_msg.data = self.mode_published
+                    self.mode_pub.publish(mode_msg)
+                    self.prev_mode_pub = self.mode_published
 
                 #print("Angle, modes published, recieved" + str((self.intruder_angle, self.mode_published, self.mode_recieved)) + str(self.test_callbacks))
 

@@ -249,8 +249,12 @@ class Camera_detect:
                 else:
                     self.intruder_angle = 0
 
-                    # We want to keep the state unchanged
-                    self.mode_published = self.mode_recieved
+                    # if we lose contact, restore to the graph
+                    if self.mode_recieved == "chaser":
+                        self.mode_published = "restoring"
+                    else:
+                         # We want to keep the state unchanged
+                        self.mode_published = self.mode_recieved
 
                         #self.mode_published = "localizing"################################################# Until we figure out the localization node
                     #print(self.mode_published)
