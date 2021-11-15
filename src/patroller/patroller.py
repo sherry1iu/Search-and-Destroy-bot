@@ -18,6 +18,8 @@ from src.utilities.get_current_position import get_current_position
 from src.utilities.move_to_point import move_to_point
 from src.utilities.parse_graph import parse_json_graph
 
+from std_srvs.srv import Trigger, TriggerRequest
+
 FREQUENCY = 10
 
 
@@ -35,10 +37,11 @@ class Patroller:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            self.mode = "initializing"
+            # self.mode = "initializing"
+            self.mode = "patrolling"
             self.is_on_graph = False
 
-            # the JSON string containing the graph; we get this from the graph solving service
+            self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
             self.raw_graph_string = None
 
         # callback and publisher for mode switching
@@ -60,15 +63,17 @@ class Patroller:
         # a queue of nodes in the graph to visit
         self.nodes_to_visit = []
 
-        # if in test mode, we will just outright call the parsing function
-        if is_test_mode:
-            self.raw_graph_callback(self.raw_graph_string)
-
         rospy.sleep(2)
 
-    def raw_graph_callback(self, raw_graph_string):
-        """Callback for parsing the raw graph created by another node"""
-        self.node_dictionary, self.edge_dictionary = parse_json_graph(raw_graph_string)
+        if not is_test_mode:
+            # the JSON string containing the graph; we get this from the graph solving service
+            self.raw_graph_string = self._graph_service_proxy(TriggerRequest()).message
+            print("Raw graph string:")
+            print self.raw_graph_string
+
+        # use the raw graph string to create node and edge dictionaries
+        self.node_dictionary, self.edge_dictionary = parse_json_graph(self.raw_graph_string)
+
 
     def mode_callback(self, msg):
         print(msg)

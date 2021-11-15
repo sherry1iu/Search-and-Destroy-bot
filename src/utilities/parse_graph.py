@@ -29,7 +29,7 @@ def parse_json_graph(json_graph):
     for node in simple_graph:
         # create an inner dictionary for this node
         edge_sub_dictionary = {}
-        for neighbor_id in node["neighbor_ids"]:
+        for neighbor_id in node["neighbors"]:
             neighbor = node_dictionary[neighbor_id]
             difference = [neighbor["x"] - node["x"],
                           neighbor["y"] - node["y"]]

@@ -18,7 +18,6 @@ class ChinesePostmanProblem:
         """Finds the optimal path from the start to end node for the robot using Dijkstra's algo"""
         dijkstra = DijkstraSearch(initial_id=start_node, goal_id=end_node, edge_dictionary=edge_dictionary)
         path = dijkstra.perform_search()
-        print(path)
         return path
 
     @staticmethod
