@@ -47,6 +47,9 @@ roslaunch rosbot_description rosbot_rviz_gmapping.launch
 From here, you have a functional rosbot in a world.
 If you do
 ```
+sudo apt-get install ros-melodic-rqt ros-melodic-rqt-common-plugins
+source /opt/ros/melodic/setup.bash
+
 rqt
 Plugins->Visualization->Image View
 then select /camera/rgb/image_raw from the dropdown

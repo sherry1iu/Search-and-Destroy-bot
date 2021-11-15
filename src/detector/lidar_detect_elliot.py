@@ -225,7 +225,7 @@ class Lidar_detect:
         if intruder_detected:
             self.intruder = True
             # transform the angle back to the correct reference frame
-            self.intruder_angle = tf.transformations.euler_from_quaternion(R)[2] + int_angle
+            self.intruder_angle = tf.transformations.euler_from_quaternion(rot)[2] + int_angle
             self.mode_published = "chaser"
         else:
             if self.prev_mode_pub == "chaser":
