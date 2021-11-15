@@ -128,9 +128,9 @@ class Lidar_detect:
         """"Function to set the robot to restoring mode if it gets within 0.15m of the target"""
         for i in range(len(msg.ranges)):
             scan_range = msg.ranges[i]
-            if scan_range < RESTORE_RANGE and self.mode_published == "chaser":
+            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
                 print("RESTORING......")
-                self.mode_callback("restoring")
+                self.mode_pub.publish("restoring")
                 break
 
 

@@ -119,6 +119,10 @@ class Camera_detect:
         v
         +y
         """
+        # We completely skip processing if we're making our way back to the graph
+        if self.mode_recieved == "restoring":
+            return
+
         self.data_ready = False
             # Turns message into a numpy array
         np_arr = np.fromstring(msg.data, np.uint8)
@@ -245,10 +249,8 @@ class Camera_detect:
                 else:
                     self.intruder_angle = 0
 
-                    if self.mode_recieved == "patrolling":
-                        self.mode_published = "patrolling"
-                    else:
-                        self.mode_published = "patrolling"
+                    # We want to keep the state unchanged
+                    self.mode_published = self.mode_recieved
 
                         #self.mode_published = "localizing"################################################# Until we figure out the localization node
                     #print(self.mode_published)
@@ -257,13 +259,16 @@ class Camera_detect:
             
                 print("Intruder angle: " + str(60*self.intruder_angle))
 
+                mode_msg = String()
+                mode_msg.data = self.mode_published
+                self.mode_pub.publish(mode_msg)
 
-                if self.mode_published != self.last_mode_published:
-                    mode_msg = String()
-                    mode_msg.data = self.mode_published
-                    print("Publishing state: ")
-                    self.mode_pub.publish(mode_msg)
-                    self.last_mode_published = self.mode_published
+                # if self.mode_published != self.last_mode_published:
+                #     mode_msg = String()
+                #     mode_msg.data = self.mode_published
+                #     print("Publishing state: ")
+                #     self.mode_pub.publish(mode_msg)
+                #     self.last_mode_published = self.mode_published
 
                 float32_msg = Float32()
                 float32_msg.data = self.intruder_angle
