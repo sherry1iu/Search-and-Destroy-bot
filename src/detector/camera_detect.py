@@ -35,7 +35,7 @@ GREY_BRIGHTEST = [250, 233, 217]
 HEIGHT = 480
 WIDTH = 640
 
-
+'''
 Before starting! Open these links.
 https://docs.ros.org/en/hydro/api/cv_bridge/html/python/index.html
 https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
@@ -45,7 +45,7 @@ https://stackoverflow.com/questions/22588146/tracking-white-color-using-python-o
 https://www.circuitmix.com/detecting-and-tracking-colours-using-python/
 https://www.geeksforgeeks.org/python-opencv-imdecode-function/
 
-
+'''
 
 
 
