@@ -87,13 +87,14 @@ class Camera_detect:
         # Angle publisher
         self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
 
-        self.intruder_mid = None
+        self.intruder_mid = WIDTH/2
         
         self.mode_recieved = "patrolling"
         #self.mode_recieved = "chaser"
         #self.mode_recieved = "localizing"
 
-
+        self.obstacle = False
+        self.last_mode_published = None
         self.mode_published = None
         self.intruder_angle = 0
 
@@ -107,6 +108,7 @@ class Camera_detect:
 
     def mode_callback(self, msg):
         self.mode_recieved = msg.data
+        print("New mode: " + self.mode_recieved)
 
     def camera_callback(self, msg):
         """
@@ -121,20 +123,22 @@ class Camera_detect:
             # Turns message into a numpy array
         np_arr = np.fromstring(msg.data, np.uint8)
         self.testvar = 1
-        print("Started Camera callback")
+        #print("Started Camera callback")
 
         # Turn the np image into a cv2 image (image array)
         BGR_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         image = cv2.cvtColor(BGR_image, cv2.COLOR_BGR2RGB)
         #print(len(image))
         self.height = len(image)
+        #print(self.height)
         #print(len(image[1]))
         self.width = len(image[1])
+        #self.intruder_mid = self.width/2
 
         # Tuples of (rgb turned into list)
         #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST), (GREY_DULLEST, GREY_BRIGHTEST)]
-        #boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
-        boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
+        boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
+        #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
 
         #for (lower, upper) in boundaries:
         lower = boundaries[0][0]
@@ -188,6 +192,7 @@ class Camera_detect:
                     #print(sum(mask)[i])
             ######################################################
             self.intruder_mid = (rightmost + leftmost)/2
+            print(self.intruder_mid)
             '''
             print(182)
             print(leftmost, rightmost)
@@ -208,7 +213,6 @@ class Camera_detect:
         msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
         while not rospy.is_shutdown():
             
-            print("Iran 211")
             ############################################################################################
             #if self.data_ready:
             if True:
@@ -216,10 +220,10 @@ class Camera_detect:
                 if self.obstacle:
                     #print("216666")
                     """MATH FOR ANGLE"""
-                    #print(self.width)
-                    #print(self.intruder_mid)
+                    print(self.width)
+                    print(self.intruder_mid)
                     fraction_location = float(self.intruder_mid) / self.width
-                    #print(fraction_location)
+                    print(fraction_location)
                     
                     #if fraction_location < .5:
                     #    fraction_location = fraction_location * -1
@@ -244,28 +248,34 @@ class Camera_detect:
                     if self.mode_recieved == "patrolling":
                         self.mode_published = "patrolling"
                     else:
-                        self.mode_published = "localizing"
+                        self.mode_published = "patrolling"
+
+                        #self.mode_published = "localizing"################################################# Until we figure out the localization node
                     #print(self.mode_published)
                     #print(self.intruder_angle)
 
             
-                print((self.mode_published, 60*self.intruder_angle))
+                print("Intruder angle: " + str(60*self.intruder_angle))
 
 
-
-                mode_msg = String()
-                mode_msg.data = self.mode_published
-                self.mode_pub.publish(mode_msg)
+                if self.mode_published != self.last_mode_published:
+                    mode_msg = String()
+                    mode_msg.data = self.mode_published
+                    print("Publishing state: ")
+                    self.mode_pub.publish(mode_msg)
+                    self.last_mode_published = self.mode_published
 
                 float32_msg = Float32()
                 float32_msg.data = self.intruder_angle
                 self.float32_pub.publish(float32_msg)
 
+                rospy.sleep(1.0)
+
 
 
 def main():
     # # 1st. initialization of node.
-    rospy.init_node("node")    
+    rospy.init_node("n0de")    
     # # Wait for setup
     rospy.sleep(2)
  

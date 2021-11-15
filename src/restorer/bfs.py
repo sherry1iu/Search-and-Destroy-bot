@@ -203,6 +203,7 @@ class BFS:
         next_node = self.tree
 
         has_completed = False
+        has_failed = True
         while not has_completed and not rospy.is_shutdown():
             # if we're at the goal, complete and break
             did_find_goal = False
@@ -215,10 +216,17 @@ class BFS:
                     self.goal_node = next_node
                     did_find_goal = True
 
-            if not did_find_goal:
+            if len(self.queue) == 0:
+                has_completed = True
+                has_failed = True
+
+            elif not did_find_goal:
                 self.expand_node(next_node)
                 next_node = self.queue.pop(0)
                 # print("Next node: " + str(next_node.pos) + ", queue length: " + str(len(self.priority_queue)))
+
+        if has_failed:
+            return []
 
         # gets the raw path based on A* search
         raw_path = self.perform_backtrack()

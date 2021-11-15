@@ -30,8 +30,8 @@ class Patroller:
     def __init__(self, is_live, is_test_mode):
         """Initialization function."""
         if is_test_mode:
-            # self.mode = "restoring"
-            self.mode = "patrolling"
+            self.mode = "restoring"
+            # self.mode = "patrolling"
             self.is_on_graph = True
             self.raw_graph_string = get_test_json_graph()
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher

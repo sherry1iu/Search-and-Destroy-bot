@@ -35,6 +35,9 @@ AMCL_POSE_TOPIC = "amcl_pose"
 FLOAT32_TOPIC = "angle"
 MODE_TOPIC = "mode"
 
+# the range at which to restore back onto the graph
+RESTORE_RANGE = 15
+
 
 class Lidar_detect:
     def __init__(self, is_live):   # Delete these parameters once we're testing wiht topics.
@@ -120,6 +123,16 @@ class Lidar_detect:
 
     def laser_callback(self, msg):
         self.msg = msg
+
+    def laser_fx_simple(self, msg):
+        """"Function to set the robot to restoring mode if it gets within 0.15m of the target"""
+        for i in range(len(msg.ranges)):
+            scan_range = msg.ranges[i]
+            if scan_range < RESTORE_RANGE and self.mode_published == "chaser":
+                print("RESTORING......")
+                self.mode_callback("restoring")
+                break
+
 
     def laser_fx(self, msg):
         (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
@@ -300,13 +313,14 @@ class Lidar_detect:
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
             if self.msg != None:
-                self.laser_fx(self.msg)
+                self.laser_fx_simple(self.msg)
+                #self.laser_fx(self.msg)
 
                 #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
 
-                float32_msg = Float32()
-                float32_msg.data = self.intruder_angle
-                self.float32_pub.publish(float32_msg)
+                # float32_msg = Float32()
+                # float32_msg.data = self.intruder_angle
+                # self.float32_pub.publish(float32_msg)
 
                 mode_msg = String()
                 mode_msg.data = self.mode_published

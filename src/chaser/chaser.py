@@ -23,8 +23,8 @@ DEFAULT_CMD_VEL_TOPIC = 'cmd_vel'
 
 # PD controller constants
 KP = 1.1
-KI = -1.5
-KD = 1
+KI = -.5
+KD = .7
 
 
 #BOOL_TOPIC = "intruder"
@@ -44,17 +44,13 @@ print("Chaser imported")
 class Chaser:
     def __init__(self, angvel = ANGULAR_VELOCITY, linvel = LINEAR_VELOCITY, \
              kp = KP, kd = KD, ki = KI):
-        print("43 Ran")
         # Velocity publisher; passed into move function
         self.cmd_pub = rospy.Publisher(DEFAULT_CMD_VEL_TOPIC, Twist, queue_size=1)
-        print("46 Ran")
         # Find angle from lidar/camera
         self.float32_sub = rospy.Subscriber(FLOAT32_TOPIC, Float32, self.angle_callback, queue_size = 1)
-        print("49 Ran")
         # Find mode (overarching fsm)
         self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
         self.mode = "patrolling"
-        print("53 Ran")
 
         # PID Parameters
 
@@ -84,6 +80,7 @@ class Chaser:
     
     def mode_callback(self, msg):
         self.mode = msg.data
+        print("New mode: " + self.mode)
 
 
     def angle_callback(self, msg):
@@ -94,11 +91,11 @@ class Chaser:
     def spin(self):
         print("91 Ran")
         while not rospy.is_shutdown():
-            if self.mode != "chaser":
-                print(self.mode)
             if self.mode == "chaser":
+                msg = rospy.wait_for_message(FLOAT32_TOPIC, Float32)
+
                 # PID P
-                p_part = self.kp * (self.intruder_angle)
+                p_part = self.kp * (self.intruder_angle) * -1
                 
                 # PID I
                 i_part = self.ki * (self.err_sum)
