@@ -52,7 +52,7 @@ class Chaser:
         print("49 Ran")
         # Find mode (overarching fsm)
         self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
-        self.mode = "chase"
+        self.mode = "patrolling"
         print("53 Ran")
 
         # PID Parameters
@@ -93,9 +93,9 @@ class Chaser:
     def spin(self):
         print("91 Ran")
         while not rospy.is_shutdown():
-            if self.mode != "chase":
+            if self.mode != "chaser":
                 print(self.mode)
-            if self.mode == "chase":
+            if self.mode == "chaser":
                 # PID P
                 p_part = self.kp * (self.intruder_angle)
                 
@@ -112,7 +112,7 @@ class Chaser:
                 self.angular_velocity = p_part + i_part + d_part
 
                 # Move
-                move(self.linear_velocity, self.angular_velocity, self.cmd_pub)
+                move(self.linear_velocity, self.angular_velocity, self.cmd_pub)##########################################################################################
 
                 # Prepare for next iteration
                 self.prev_angle = self.intruder_angle

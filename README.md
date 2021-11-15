@@ -56,7 +56,7 @@ you will be able to see image data.
 Now run (in separate terminals)
 Publish the map
 ```
-./src/utitilies/read_and_publish_map.py
+./src/utilities/read_and_publish_map.py
 ```
 Set up the graph server
 ```
@@ -66,10 +66,13 @@ Run the patroller module
 ```
 cd src/patroller
 ./patroller.py
+```
 Run the restorer module
 ```
 cd src/restorer
-./src/restorer/restorer.py
+./restorer.py
+```
+Run the map publisher
 ```
 ./src/utilities/tf_map_publisher.py
 ```
