@@ -39,6 +39,7 @@ git clone https://github.com/husarion/rosbot_description
 cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
 catkin_make
+source ~/catkin_ws/devel/setup.sh
 roslaunch rosbot_description rosbot_rviz_gmapping.launch
 
 # that last command will show some red text. That's OK -- it loads the right world
