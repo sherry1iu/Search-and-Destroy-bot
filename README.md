@@ -66,6 +66,15 @@ Set up the graph server
 ```
 ./src/voronoi/graph_server.py
 ```
+Run the LIDAR module
+```
+./src/detector/lidar_detect_elliot.py
+```
+Run the camera module
+```
+cd work/cs81-final/src/detector
+./camera_detect.py
+```
 Run the patroller module
 ```
 cd src/patroller
