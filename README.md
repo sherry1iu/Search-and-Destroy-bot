@@ -76,10 +76,6 @@ Run the restorer module
 cd src/restorer
 ./restorer.py
 ```
-Run the map publisher
-```
-./src/utilities/tf_map_publisher.py
-```
 
 ## Modifying the World:
 Once you've inserted objects into the world you launched with
