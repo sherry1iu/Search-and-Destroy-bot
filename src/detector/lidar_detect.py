@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-print("LIDAR has been imported.")
-
 import math
 import numpy as np
 import tf
-from enum import Enum
 
 import rospy # module for ROS APIs
 
@@ -20,7 +17,6 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud
 
-#from std_msgsf.msg import Bool
 from std_msgs.msg import Float32
 from visualization_msgs.msg import Marker
 FREQUENCY = 10
@@ -38,17 +34,16 @@ MODE_TOPIC = "mode"
 # the range at which to restore back onto the graph
 RESTORE_RANGE = 0.0
 
+# Max detection distance
+MAXDIST = 150
 
 class Lidar_detect:
     def __init__(self, is_live):   # Delete these parameters once we're testing wiht topics.
 
-        self.test_callbacks = ["mode", "laser", "occugrid", "pose", "odom"]
-
-
         # Occupancy grid subscriber
         self.occu_sub = rospy.Subscriber(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid, self.occugrid_callback, queue_size=1)
 
-        # Pose from AMCL / localization node
+        # Pose from localization node following AMCL naming
         self.pose_sub = rospy.Subscriber(AMCL_POSE_TOPIC, PoseWithCovarianceStamped, self.pose_callback, queue_size = 1)
 
         # Before localization node is determined, use this one
@@ -56,14 +51,13 @@ class Lidar_detect:
 
         # Mode pub/sub
         self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
-        self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
+        self.mode_sub = rospy.Subscriberf(MODE_TOPIC, String, self.mode_callback, queue_size=1)
 
         # Angle publisher
         self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
 
 
-        # True until done testing. At which point it's false.
-        self.intruder = True #False
+        self.intruder = False
         self.intruder_angle = 0
 
         self.marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size = 100)
@@ -86,15 +80,13 @@ class Lidar_detect:
 
         self.mode_recieved = None
         self.mode_published = "restoring"
-        self.prev_mode_pub = "restoring"
         self.prev_mode_pub = "None"
 
         self.msg = None
 
         self.data_ready = False
 
-        # move this down so that laser doesn't start early
-        # Laser subscriber from LIDAR
+        # Laser subscriber from LIDAR. Start subscriber after initializing all others
         self.laser_sub = rospy.Subscriber(DEFAULT_SCAN_TOPIC, LaserScan, self.laser_callback, queue_size=1)
 
         print("LIDAR init finished.")
@@ -120,7 +112,6 @@ class Lidar_detect:
 
     def mode_callback(self, msg):
         self.mode_recieved = msg.data
-        self.test_callbacks[0] = "1"
 
     def laser_callback(self, msg):
         self.msg = msg
@@ -277,12 +268,8 @@ class Lidar_detect:
         print(self.mode_published)
         print(self.intruder)
         print(intruder_detected)
-        #while True:
-        #    pass
-        #    self.marker_pub.publish(marker_msg)
 
 
-        self.test_callbacks[1] = "1"
 
 
 
@@ -291,7 +278,6 @@ class Lidar_detect:
         self.grid = np.reshape(msg.data, (msg.info.height, msg.info.width))
         self.resolution = msg.info.resolution
         self.origin = msg.info.origin
-        self.test_callbacks[2] = "1"
 
 
     def pose_callback(self, msg):
@@ -304,7 +290,6 @@ class Lidar_detect:
 
         quaternion = (pose_map.orientation.x, pose_map.orientation.y, pose_map.orientation.z, pose_map.orientation.w)
         self.yaw = tf.transformations.euler_from_quaternion(quaternion)[2]
-        self.test_callbacks[3] = "1"
 
 
     def odom_callback(self, msg):
@@ -317,7 +302,6 @@ class Lidar_detect:
         # Yaw angle
         quaternion = (msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w)
         self.yaw = tf.transformations.euler_from_quaternion(quaternion)[2]
-        self.test_callbacks[4] = "1"
 
 
 
@@ -328,7 +312,6 @@ class Lidar_detect:
         while not rospy.is_shutdown():
 
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
-            #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
             if self.msg != None:
                 if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
                     self.laser_fx(self.msg)
@@ -339,7 +322,6 @@ class Lidar_detect:
                     self.mode_pub.publish(mode_msg)
                     self.prev_mode_pub = self.mode_published
 
-                #print("Angle, modes published, recieved" + str((self.intruder_angle, self.mode_published, self.mode_recieved)) + str(self.test_callbacks))
 
                 rate.sleep()
 
