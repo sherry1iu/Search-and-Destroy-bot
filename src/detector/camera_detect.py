@@ -77,17 +77,15 @@ class Camera_detect:
         self.intruder_mid = WIDTH/2
         
         self.mode_recieved = "patrolling"
-        #self.mode_recieved = "chaser"
-        #self.mode_recieved = "localizing"
+
 
         self.obstacle = False
         self.intruder_angle = 0
 
-        # Init as this, even though it's wrong. We'll update it after presentation (Actually changed in program in  callback)
+        # Initialization; changed in callback
         self.height = HEIGHT
         self.width = WIDTH
 
-        #print("Camera init done")
 
         self.data_ready = False
 
@@ -97,7 +95,7 @@ class Camera_detect:
 
     def camera_callback(self, msg):
         """
-        Read like this
+        Read image like this
         ---------> + x
         |
         |
@@ -116,28 +114,21 @@ class Camera_detect:
 
         # Turn the np image into a cv2 image (image array)
         BGR_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(BGR_image, cv2.COLOR_BGR2RGB)
-        #print(len(image))
-        self.height = len(image)
-        #print(self.height)
-        #print(len(image[1]))
-        self.width = len(image[1])
-        #self.intruder_mid = self.width/2
 
-        # Tuples of (rgb turned into list)
-        #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST), (GREY_DULLEST, GREY_BRIGHTEST)]
+        # BGR to RGB
+        image = cv2.cvtColor(BGR_image, cv2.COLOR_BGR2RGB)
+
+        self.height = len(image)
+        self.width = len(image[1])
+
+        # Tuples of rgb ranges; depends on what to test for
         boundaries = [(ORANGE_DULLEST, ORANGE_BRIGHTEST)]
         #boundaries = [(YELLOW_DULLEST, YELLOW_BRIGHTEST)]
 
-        #for (lower, upper) in boundaries:
+        # Range of colors
         lower = boundaries[0][0]
         upper = boundaries[0][1]
-        '''
-        if lower[0] == 149:
-            grey = True
-        else:
-            grey = False
-        '''
+
 
         ## create NumPy arrays from the boundaries
         lower = np.array(lower, dtype = "uint8")
@@ -145,14 +136,8 @@ class Camera_detect:
         
         ## find the colors within the specified boundaries and apply mask
         mask = cv2.inRange(image, lower, upper)
-        #print(mask.shape)
-        #print(sum(sum(mask)))
 
-        #print(image[70][70])
-
-        #print(len(sum(mask)))
-        #print(sum(sum(mask)))
-            # If enough orange found
+        # If enough orange found
         if sum(sum(mask)) > 20:
 
             self.obstacle = True
@@ -201,34 +186,23 @@ class Camera_detect:
         total = math.pi/2
         msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
         while not rospy.is_shutdown():
-            
-            ############################################################################################
-            #if self.data_ready:
-            if True:
-                #print("2144444")
-                if self.obstacle:
-                    #print("216666")
-                    """MATH FOR ANGLE"""
-                    #print(self.width)
-                    #print(self.intruder_mid)
-                    fraction_location = float(self.intruder_mid) / self.width
-                    #print(fraction_location)
-                    
-                    self.intruder_angle = (total * fraction_location) - (total)/2
-                    
-                    
 
-                else:
-                    self.intruder_angle = None
+             if self.obstacle:
 
+                fraction_location = float(self.intruder_mid) / self.width
+                
+                self.intruder_angle = (total * fraction_location) - (total)/2
 
-                if self.intruder_angle is not None:
-                    print("Intruder angle: " + str(self.intruder_angle))
-                    float32_msg = Float32()
-                    float32_msg.data = self.intruder_angle
-                    self.float32_pub.publish(float32_msg)
+            if self.intruder_angle is not None:
+                print("Intruder angle: " + str(self.intruder_angle))
+                float32_msg = Float32()
+                float32_msg.data = self.intruder_angle
+                self.float32_pub.publish(float32_msg)
+           
+            else:
+                self.intruder_angle = None
 
-                rospy.sleep(1.0)
+            rospy.sleep(1.0)
 
 
 
