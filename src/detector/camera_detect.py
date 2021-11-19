@@ -13,13 +13,11 @@ from sensor_msgs.msg import CompressedImage
 # Check these imports
 from scipy.ndimage import filters
 import roslib
-import sys, time
+import time
 
 from std_msgs.msg import Float32
 from std_msgs.msg import String                             # Mode
 
-
-import sys
 sys.path.append('../../')
 
 from src.utilities.move_to_point import *
@@ -63,18 +61,6 @@ https://www.geeksforgeeks.org/python-opencv-imdecode-function/
 '''
 
 
-
-
-
-
-
-
-
-"Get rid of themode sub right now. We'll have to put it back eventually but not yet"
-
-
-
-
 class Camera_detect:  
     def __init__(self):        
         
@@ -83,7 +69,6 @@ class Camera_detect:
         self.image_pub = rospy.Publisher("/output/image_raw/compressed", CompressedImage, queue_size=1)
 
         # Mode pub/sub
-        self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
         self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
 
         # Angle publisher
@@ -96,8 +81,6 @@ class Camera_detect:
         #self.mode_recieved = "localizing"
 
         self.obstacle = False
-        self.last_mode_published = None
-        self.mode_published = None
         self.intruder_angle = 0
 
         # Init as this, even though it's wrong. We'll update it after presentation (Actually changed in program in  callback)
@@ -226,58 +209,22 @@ class Camera_detect:
                 if self.obstacle:
                     #print("216666")
                     """MATH FOR ANGLE"""
-                    print(self.width)
-                    print(self.intruder_mid)
+                    #print(self.width)
+                    #print(self.intruder_mid)
                     fraction_location = float(self.intruder_mid) / self.width
-                    print(fraction_location)
+                    #print(fraction_location)
                     
-                    #if fraction_location < .5:
-                    #    fraction_location = fraction_location * -1
                     self.intruder_angle = (total * fraction_location) - (total)/2
-
-                    self.mode_published = "chaser"
-                    '''
-                    print(self.intruder_angle*60)
-                    print(total * fraction_location*60)
                     
-
-                    
-                    
-                    print(self.mode_published)
-                    '''
-
                     
 
                 else:
                     self.intruder_angle = 0
 
-                    # if we lose contact, restore to the graph
-                    if self.mode_recieved == "chaser":
-                        self.mode_published = "restoring"
-                    else:
-                         # We want to keep the state unchanged
-                        self.mode_published = self.mode_recieved
-
-                        #self.mode_published = "localizing"################################################# Until we figure out the localization node
-                    #print(self.mode_published)
                     #print(self.intruder_angle)
 
             
                 print("Intruder angle: " + str(60*self.intruder_angle))
-
-                print("Publishing mode:")
-                print(self.mode_published)
-
-                mode_msg = String()
-                mode_msg.data = self.mode_published
-                self.mode_pub.publish(mode_msg)
-
-                # if self.mode_published != self.last_mode_published:
-                #     mode_msg = String()
-                #     mode_msg.data = self.mode_published
-                #     print("Publishing state: ")
-                #     self.mode_pub.publish(mode_msg)
-                #     self.last_mode_published = self.mode_published
 
                 float32_msg = Float32()
                 float32_msg.data = self.intruder_angle
@@ -295,14 +242,10 @@ def main():
  
     camdet = Camera_detect()
 
-
-
     try:
         camdet.spin()
     except rospy.ROSInterruptException:
         rospy.logerr("ROS node interrupted.")
-    
-    
 
 
 if __name__ == "__main__":
