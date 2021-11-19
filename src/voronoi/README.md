@@ -2,7 +2,7 @@
 
 The graph server takes an occupancy grid from file and runs a ROS service that will return a Voronoi Graph in JSON format parsed from a published occupancy grid.
 
-## Requierments
+## Requirements
 
 * numpy
 * scipy
@@ -13,7 +13,7 @@ The graph server takes an occupancy grid from file and runs a ROS service that w
 
 0. Ensure a valid occupancy grid is being published and make sure its topic matches the global varibale `DEFAUL_MAP_TOPIC`
 1. Run the executable: `./graph_server.py
-2. Have some external code call its ROS service (or manually: `rosservice call /graph "{}"`
+2. Have some external code call its ROS service (or manually: `rosservice call /graph "{}"`), the message contents should be empty.
 3. Profit!
 
 ## Message Format
