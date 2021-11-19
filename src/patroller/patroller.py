@@ -38,7 +38,7 @@ class Patroller:
 
         else:
             # self.mode = "initializing"
-            self.mode = "patrolling"
+            self.mode = "restoring"
             self.is_on_graph = False
 
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
@@ -113,6 +113,28 @@ class Patroller:
 
     def re_plan(self):
         """Uses the previously created plan to traverse the graph"""
+        if not self.route_planner:
+            self.plan()
+            return 
+
+        trans = get_current_position("map", "base_link", self.transform_listener)[0]
+        current_node = self.route_planner.find_current_node({"x": trans[0], "y": trans[1]})
+        nodes_to_visit = self.route_planner.find_traversal()[:]
+
+        coords_to_visit = []
+        # convert from id to coordinate once we've found the current node in the list
+        has_found_current = False
+
+        for _id in nodes_to_visit:
+            if _id == current_node:
+                has_found_current = True
+
+            # if we've found the current node, we keep on going
+            if has_found_current:
+                coords_to_visit.append(self.node_dictionary[_id])
+
+        self.nodes_to_visit = coords_to_visit
+        self.should_re_plan = False
         
 
     def execute_plan(self):
@@ -127,14 +149,6 @@ class Patroller:
         next_node = self.nodes_to_visit.pop(0)
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         yaw = tf.transformations.euler_from_quaternion(rot)[2]
-
-        # print("Next node:")
-        # print(next_node)
-        # print("Current node:")
-        # print(trans)
-        # print("Orientation:")
-        # print(yaw)
-        # print("\n")
 
         move_to_point(current_point=trans,
                       current_orientation=yaw,

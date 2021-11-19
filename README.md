@@ -72,7 +72,7 @@ Run the LIDAR module
 ```
 Run the camera module
 ```
-cd work/cs81-final/src/detector
+cd ./src/detector
 ./camera_detect.py
 ```
 Run the patroller module
