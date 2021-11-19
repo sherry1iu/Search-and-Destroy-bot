@@ -67,7 +67,7 @@ class Localizer():
         self.last_translation = 0
         self.last_rotation = 0
 
-        self.linear_velocity = 0.3
+        self.linear_velocity = 0.1
         self.angular_velocity = math.pi / 4
 
         self.grid_sub = rospy.Subscriber(GRID_TOPIC, OccupancyGrid, self.grid_callback, queue_size=1)
@@ -239,7 +239,7 @@ class Localizer():
             self.last_rotation = 0
         else:
             self.last_translation = 0
-            self.last_rotation = math.pi / 2
+            self.last_rotation = random.random() * math.pi / 2
         self.move(self.last_translation, self.last_rotation)
         self.state = fsm.SCAN
 
@@ -270,6 +270,10 @@ class Localizer():
         while not rospy.is_shutdown():
             # check if done
             if rospy.get_rostime() - start_time >= rospy.Duration(final_duration):
+                twist_msg = Twist()
+                twist_msg.linear.x = 0
+                twist_msg.angular.z = 0
+                self.cmd_pub.publish(twist_msg)
                 break
             twist_msg = Twist()
             twist_msg.linear.x = lin_v
