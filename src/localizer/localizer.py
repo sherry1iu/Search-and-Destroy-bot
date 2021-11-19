@@ -113,37 +113,88 @@ class Localizer():
             self.distances = [[[0 for x in range(4)] for x in range(self.grid.height)] for x in range(self.grid.width)]
 
         ITERATOR = 0
-        for x in range(0, self.grid.width):
-            for y in range(0, self.grid.height):
-                if self.grid.cell_at(x, y) == 100: continue     # continue if wall
+        # for x in range(0, self.grid.width):
+        #     for y in range(0, self.grid.height):
+        #         if self.grid.cell_at(x, y) == 100: continue     # continue if wall
 
-                self.distances[x][y][0] = 0
-                for y_2 in range(y + 1, self.grid.height):
-                    if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-                    self.distances[x][y][0] += self.grid.resolution
-                    ITERATOR += 1
+        #         self.distances[x][y][0] = 0
+        #         for y_2 in range(y + 1, self.grid.height):
+        #             if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
+        #             self.distances[x][y][0] += self.grid.resolution
+        #             ITERATOR += 1
 
-                self.distances[x][y][2] = 0
-                for y_2 in range(y - 1, -1, -1):
-                    if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-                    self.distances[x][y][2] += self.grid.resolution
-                    ITERATOR += 1
+        #         self.distances[x][y][2] = 0
+        #         for y_2 in range(y - 1, -1, -1):
+        #             if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
+        #             self.distances[x][y][2] += self.grid.resolution
+        #             ITERATOR += 1
 
-                self.distances[x][y][3] = 0
-                for x_2 in range(x + 1, self.grid.width):
-                    if self.grid.cell_at(x_2, y) == 100: break
-                    self.distances[x][y][3] += self.grid.resolution
-                    ITERATOR += 1
+        #         self.distances[x][y][3] = 0
+        #         for x_2 in range(x + 1, self.grid.width):
+        #             if self.grid.cell_at(x_2, y) == 100: break
+        #             self.distances[x][y][3] += self.grid.resolution
+        #             ITERATOR += 1
 
-                self.distances[x][y][1] = 0
-                for x_2 in range(x - 1, -1, -1):
-                    if self.grid.cell_at(x_2, y) == 100: break
-                    self.distances[x][y][1] += self.grid.resolution
-                    ITERATOR += 1
+        #         self.distances[x][y][1] = 0
+        #         for x_2 in range(x - 1, -1, -1):
+        #             if self.grid.cell_at(x_2, y) == 100: break
+        #             self.distances[x][y][1] += self.grid.resolution
+        #             ITERATOR += 1
 
+        #         if (ITERATOR % 10000 == 0):
+        #             print(ITERATOR)
+
+        distance_to_wall = 0
+        for y in range(self.grid.height):
+            for x in range(self.grid.width):
+                self.distances[x][y][1] = distance_to_wall
+                # if wall, reset distance counter
+                if self.grid.cell_at(x, y) == 100:
+                    distance_to_wall = 0
+                else:
+                    distance_to_wall += self.grid.resolution
+                ITERATOR += 1
                 if (ITERATOR % 10000 == 0):
                     print(ITERATOR)
 
+        distance_to_wall = 0
+        for y in range(self.grid.height):
+            for x in range(self.grid.width - 1, -1, -1):
+                self.distances[x][y][3] = distance_to_wall
+                # if wall, reset distance counter
+                if self.grid.cell_at(x, y) == 100:
+                    distance_to_wall = 0
+                else:
+                    distance_to_wall += self.grid.resolution
+                ITERATOR += 1
+                if (ITERATOR % 10000 == 0):
+                    print(ITERATOR)
+
+        distance_to_wall = 0
+        for x in range(self.grid.width):
+            for y in range(self.grid.height):
+                self.distances[x][y][0] = distance_to_wall
+                # if wall, reset distance counter
+                if self.grid.cell_at(x, y) == 100:
+                    distance_to_wall = 0
+                else:
+                    distance_to_wall += self.grid.resolution
+                ITERATOR += 1
+                if (ITERATOR % 10000 == 0):
+                    print(ITERATOR)
+
+        distance_to_wall = 0
+        for x in range(self.grid.width):
+            for y in range(self.grid.height - 1, -1, -1):
+                self.distances[x][y][2] = distance_to_wall
+                # if wall, reset distance counter
+                if self.grid.cell_at(x, y) == 100:
+                    distance_to_wall = 0
+                else:
+                    distance_to_wall += self.grid.resolution
+                ITERATOR += 1
+                if (ITERATOR % 10000 == 0):
+                    print(ITERATOR)
 
         print("built distances")
 
