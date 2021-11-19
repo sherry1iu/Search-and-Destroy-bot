@@ -50,6 +50,8 @@ class Patroller:
 
         # whether we should re-do the planned patrol route
         self.should_plan = True
+        # whether we should instead use the previously planned patrol route and find the correct location to start on it
+        self.should_re_plan = True
 
         self.move_cmd_pub = rospy.Publisher("cmd_vel", Twist, queue_size=1)
         self.transform_listener = tf.TransformListener()
@@ -108,6 +110,10 @@ class Patroller:
             coords_to_visit.append(self.node_dictionary[_id])
         self.nodes_to_visit = coords_to_visit
         self.should_plan = False
+
+    def re_plan(self):
+        """Uses the previously created plan to traverse the graph"""
+        
 
     def execute_plan(self):
         """Executes the plan for traversing the graph"""

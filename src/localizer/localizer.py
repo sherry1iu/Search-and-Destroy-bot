@@ -21,9 +21,9 @@ from enum import Enum
 # Constants.
 # Topic names
 DEFAULT_CMD_VEL_TOPIC = 'cmd_vel'
-DEFAULT_SCAN_TOPIC = 'base_scan'
+DEFAULT_SCAN_TOPIC = 'scan'
 ODOM_TOPIC = 'odom'
-GRID_TOPIC = 'map'
+GRID_TOPIC = 'static_map'
 
 FREQUENCY = 10 #Hz.
 
@@ -57,7 +57,7 @@ class Localizer():
     def __init__(self):
         """Constructor"""
         self.state = fsm.UNINIT
-        self.mode = "localizing"
+        self.mode = "initializing"
 
         self.grid = None
         self.distances = None
@@ -78,12 +78,16 @@ class Localizer():
         self.mode_callback = rospy.Subscriber("mode", String, self.mode_callback, queue_size=1)
         self.mode_publisher = rospy.Publisher("mode", String, queue_size=1)
 
+        self.br = tf.TransformBroadcaster()
+
         self.final_pos = None
+
+        print("Ready to localize")
 
     def mode_callback(self, msg):
         print(msg)
         """The callback for switching modes"""
-        if msg.data is "localizing" and self.mode is not "localizing":
+        if msg.data is "initializing" and self.mode is not "initializing":
             self.state = fsm.UNINIT
         self.mode = msg.data
 
@@ -95,17 +99,20 @@ class Localizer():
         self.mode_publisher.publish(msg)
 
     def grid_callback(self, msg):
-        if self.mode is not "localizing" or self.state != fsm.UNINIT: return
+        if self.mode is not "initializing" or self.state != fsm.UNINIT: return
         self.grid = Grid(msg.data, msg.info.width, msg.info.height, msg.info.resolution)
+        print("created grid")
         self.error_threshold = (2 * self.grid.resolution) ** 2
         self.build_distances()
         self.state = fsm.SCAN
+        print(self.state)
 
     def build_distances(self):
         """Builds a dictionary of forward/back/left/right distances from every grid square"""
         if self.distances == None:
             self.distances = [[[0 for x in range(4)] for x in range(self.grid.height)] for x in range(self.grid.width)]
 
+        ITERATOR = 0
         for x in range(0, self.grid.width):
             for y in range(0, self.grid.height):
                 if self.grid.cell_at(x, y) == 100: continue     # continue if wall
@@ -114,24 +121,35 @@ class Localizer():
                 for y_2 in range(y + 1, self.grid.height):
                     if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
                     self.distances[x][y][0] += self.grid.resolution
+                    ITERATOR += 1
 
                 self.distances[x][y][2] = 0
                 for y_2 in range(y - 1, -1, -1):
                     if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
                     self.distances[x][y][2] += self.grid.resolution
+                    ITERATOR += 1
 
                 self.distances[x][y][3] = 0
                 for x_2 in range(x + 1, self.grid.width):
                     if self.grid.cell_at(x_2, y) == 100: break
                     self.distances[x][y][3] += self.grid.resolution
+                    ITERATOR += 1
 
                 self.distances[x][y][1] = 0
                 for x_2 in range(x - 1, -1, -1):
                     if self.grid.cell_at(x_2, y) == 100: break
                     self.distances[x][y][1] += self.grid.resolution
+                    ITERATOR += 1
+
+                if (ITERATOR % 10000 == 0):
+                    print(ITERATOR)
+
+
+        print("built distances")
 
     def laser_callback(self, msg):
-        if self.mode is not "localizing" or self.state != fsm.SCAN: return
+        # print(self.state)
+        if self.mode is not "initializing" or self.state != fsm.SCAN: return
         print("begin laser")
 
         min_index = int((MIN_SCAN_ANGLE_RAD - msg.angle_min) / msg.angle_increment)
@@ -264,6 +282,14 @@ class Localizer():
         msg.pose.pose.orientation.z = quaternion[2]
         msg.pose.pose.orientation.w = quaternion[3]
 
+
+        self.br.sendTransform((pos.x, pos.y, 0),
+                         tf.transformations.quaternion_from_euler(0, 0, pos.theta),
+                         rospy.Time.now(),
+                         "map",
+                         DEFAULT_SCAN_TOPIC
+                         )
+
         self.pose_pub.publish(msg)
 
     def spin(self):
@@ -276,8 +302,9 @@ class Localizer():
 def main():
     """Main function."""
     rospy.init_node("localizer")
-    rospy.sleep(2)
     localizer = Localizer()
+    rospy.sleep(2)
+
     try:
         localizer.spin()
     except rospy.ROSInterruptException:
