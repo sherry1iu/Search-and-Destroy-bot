@@ -17,7 +17,7 @@ from sensor_msgs.msg import LaserScan # message type for scan
 # Constants.
 # Topic names
 DEFAULT_CMD_VEL_TOPIC = 'cmd_vel'
-DEFAULT_SCAN_TOPIC = 'base_scan'
+DEFAULT_SCAN_TOPIC = 'scan'
 
 # Frequency at which the loop operates
 FREQUENCY = 10 #Hz.
@@ -80,24 +80,42 @@ class RandomWalk():
         # Access to the index of the measurement in front of the robot.
         # NOTE: assumption: the one at angle 0 corresponds to the front.
 
-        if not self._close_obstacle:
-            # Find the minimum range value between min_scan_angle and
-            # max_scan_angle
-            # If the minimum range value is closer to min_threshold_distance, change the flag self._close_obstacle
-            # Note: You have to find the min index and max index.
-            # Please double check the LaserScan message http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/LaserScan.html
-            ######: ANSWER CODE BEGIN #######
-            # The range in front of the robot is +/- 90 deg, with -90deg at index 0. This section has 720 measurements
-            # 4 per degree.
-            # print "Min: " + str(msg.angle_min) + ", Max: " + str(msg.angle_max)
-            # print len(msg.ranges)
+        _close_obstacle = False
 
-            min_scan_index = (90 + self.scan_angle_deg[0]) * 4
-            max_scan_index = (90 + self.scan_angle_deg[1]) * 4
+        # Find the minimum range value between min_scan_angle and
+        # max_scan_angle
+        # If the minimum range value is closer to min_threshold_distance, change the flag self._close_obstacle
+        # Note: You have to find the min index and max index.
+        # Please double check the LaserScan message http://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/LaserScan.html
+        ######: ANSWER CODE BEGIN #######
+        # The range in front of the robot is +/- 90 deg, with -90deg at index 0. This section has 720 measurements
+        # 4 per degree.
+        # print "Min: " + str(msg.angle_min) + ", Max: " + str(msg.angle_max)
+        # print len(msg.ranges)
+        (trans, rot) = self.t.lookupTransform('base_link', self.laser_frame, rospy.Time(0))
+        scan_yaw = tf.transformations.euler_from_quaternion(rot)[2]
 
-            for range in msg.ranges[int(min_scan_index) : int(max_scan_index)]:
-                if (range < self.min_threshold_distance):
-                    self._close_obstacle = True
+        baseLink_T_laserFrame = t.dot(R)
+
+        # rectify the scan angles to be in the laser reference frame
+        rect_scan_angle_deg = [self.scan_angle_deg[0] + scan_yaw, self.scan_angle_deg[1] + scan_yaw]
+
+        # prevent the scan angles from exceeding the maximum or minimum angle bounds
+        for i in range(len(rect_scan_angle_deg)):
+            if rect_scan_angle_deg[i] < msg.angle_min:
+                rect_scan_angle_deg[i] = 2*math.pi + rect_scan_angle_deg[i]
+            if rect_scan_angle_deg[i] > msg.angle_max:
+                rect_scan_angle_deg[i] = rect_scan_angle_deg[i] - 2*math.pi
+
+        min_scan_index = int((msg.angle_min + rect_scan_angle_deg[0]) / msg.angle_increment)
+        max_scan_index = int((msg.angle_max + rect_scan_angle_deg[1]) / msg.angle_increment)
+
+        for range in msg.ranges[int(min_scan_index) : int(max_scan_index)]:
+            if (range < self.min_threshold_distance):
+                _close_obstacle = True
+                break
+
+        self._close_obstacle = _close_obstacle
 
             ####### ANSWER CODE END #######
 

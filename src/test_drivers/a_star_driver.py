@@ -7,8 +7,6 @@
 import rospy  # module for ROS APIs
 from geometry_msgs.msg import Twist  # message type for velocity command.
 from nav_msgs.msg import OccupancyGrid
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import PoseStamped
 
 import math
 import tf  # library for transformations.
@@ -22,6 +20,9 @@ VELOCITY = 0.2  # m/s
 
 from std_msgs.msg import String
 
+# the width and height of the desired clear square to search for
+CLEAR_SQUARE_DIMENSIONS = 10
+
 
 class GridPlanner:
     def __init__(self):
@@ -32,11 +33,7 @@ class GridPlanner:
 
         self.string_pub = rospy.Publisher("string", String, queue_size=1)
 
-        self.subscriber = rospy.Subscriber("map", OccupancyGrid, self.grid_callback)
-
-        self.marker_pub = rospy.Publisher("markers", Marker, queue_size=1)
-
-        self.pos_pub = rospy.Publisher("pose_sequence", PoseStamped, queue_size=1)
+        self.subscriber = rospy.Subscriber("blur_map", OccupancyGrid, self.grid_callback)
 
         # start and goal positions will be retrieved from the command line
         self.start_pos = None
@@ -47,40 +44,16 @@ class GridPlanner:
         # this is the grid converted into a double-nested array
         self.grid_arrays = None
 
+        # the corners of the targeted path
+        self.target_corners_cache = []
+        self.target_corners_queue = []
+
     def grid_callback(self, grid_msg):
         """The callback to set the grid instance variable"""
         self.grid_msg = grid_msg
         # converts grid_msg.data into a double-nested array
         self.grid_arrays = numpy.reshape(grid_msg.data, (grid_msg.info.height, grid_msg.info.width))
         # print(grid_msg.info)
-
-    def publish_marker(self, marker_id, pose):
-        """
-         the function used to publish a marker -- copied from example code and modified slightly
-        """
-        marker_msg = Marker()
-        marker_msg.header.stamp = rospy.Time.now()
-        marker_msg.header.frame_id = "map"
-        marker_msg.action = Marker.ADD
-        marker_msg.type = Marker.ARROW
-        marker_msg.id = marker_id
-        marker_msg.pose = pose
-        marker_msg.color.r = 1.0
-        marker_msg.color.a = 1
-        marker_msg.scale.x = 1
-        marker_msg.scale.y = 0.1
-        marker_msg.scale.z = 0.1
-        # publish the marker
-
-        self.marker_pub.publish(marker_msg)
-
-    def publish_pose_stamped(self, pose):
-        """Publish a PoseStamped message"""
-        pose_stamped = PoseStamped()
-        pose_stamped.header.stamp = rospy.Time.now()
-        pose_stamped.header.frame_id = "map"
-        pose_stamped.pose = pose
-        self.pos_pub.publish(pose_stamped)
 
     @staticmethod
     def get_pose(pos, yaw):
@@ -110,6 +83,13 @@ class GridPlanner:
         path = searcher.perform_search(75)
         return path
 
+    # TODO -- look at the map and find a clear square at an extreme x and y
+    def get_target_corners(self):
+        # starting pos
+        # extreme y pos
+        # extreme x pos
+
+
     def get_positions(self):
         """Get initial and final positions from the command line"""
 
@@ -121,36 +101,6 @@ class GridPlanner:
         self.start_pos = {"x": initial_x, "y": initial_y}
         self.goal_pos = {"x": goal_x, "y": goal_y}
 
-    def show_pose_sequence(self, locations):
-        """Publishes PoseStamped messages and draws relevant markers"""
-        marker_id = 0
-
-        for i in range(len(locations) - 1):
-            this_location = locations[i]
-            next_location = locations[i + 1]
-
-            difference = [next_location["x"] - this_location["x"],
-                          next_location["y"] - this_location["y"]]
-            angle = math.atan2(difference[1], difference[0])
-
-            # We find the angle to rotate and calculate the modulo so we don't spin in a circle
-            angle_to_rotate = angle % (2 * math.pi)
-
-            # we do the faster rotation if the angle is more than 180 degrees
-            if angle_to_rotate > math.pi:
-                angle_to_rotate = angle_to_rotate - (2 * math.pi)
-
-            # calculate the pose and create the necessary markers and pose stamped messages
-            pose = self.get_pose(this_location, angle_to_rotate)
-            self.publish_marker(marker_id, pose)
-            marker_id += 1
-            self.publish_pose_stamped(pose)
-
-        # mark the last position
-        pose = self.get_pose(locations[-1], 0)
-        self.publish_marker(marker_id, pose)
-        self.publish_pose_stamped(pose)
-
     def plan(self):
         """The planning driver function"""
         print("Beginning planning")
@@ -160,12 +110,12 @@ class GridPlanner:
 
         # transforms the initial/final positions to the grid resolution
         grid_start_pos = {
-            "x": int(float(self.start_pos["x"]) / self.grid_msg.info.resolution),
-            "y": int(float(self.start_pos["y"]) / self.grid_msg.info.resolution),
+            "x": int(float(self.start_pos["x"]) / self.grid_msg.info.resolution + self.grid_msg.info.origin.position.x),
+            "y": int(float(self.start_pos["y"]) / self.grid_msg.info.resolution + self.grid_msg.info.origin.position.y),
         }
         grid_goal_pos = {
-            "x": int(float(self.goal_pos["x"]) / self.grid_msg.info.resolution),
-            "y": int(float(self.goal_pos["y"]) / self.grid_msg.info.resolution),
+            "x": int(float(self.goal_pos["x"]) / self.grid_msg.info.resolution + self.grid_msg.info.origin.position.x),
+            "y": int(float(self.goal_pos["y"]) / self.grid_msg.info.resolution + self.grid_msg.info.origin.position.y),
         }
 
         print("Finding the route using A* search")
