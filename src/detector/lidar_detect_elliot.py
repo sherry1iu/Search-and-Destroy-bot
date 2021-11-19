@@ -125,36 +125,30 @@ class Lidar_detect:
     def laser_callback(self, msg):
         self.msg = msg
 
-    def laser_fx_simple(self, msg):
-        """"Function to set the robot to restoring mode if it gets within 0.15m of the target"""
-        for i in range(len(msg.ranges)):
-            scan_range = msg.ranges[i]
-            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
-                print("RESTORING......")
-                self.mode_pub.publish("restoring")
-                break
-
-
     def laser_fx(self, msg):
+        """A function that processes laser data to detect intruders."""
         (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
         t = tf.transformations.translation_matrix(trans)
         R = tf.transformations.quaternion_matrix(rot)
 
         odom_T_laserFrame = t.dot(R)
-        # baseLink_T_odom = np.linalg.inv(odom_T_laserFrame)
 
         err_count = 0
         intruder_detected = False
-
-        count = 0
         max_count = 0
-        not_printed = True
         error_array = []
+        direction_array = []
 
-
+        # iterate over the laser data; detect anamolies.
         for i in range(len(msg.ranges)):
             scan_range = msg.ranges[i]
             scan_angle = msg.angle_min + i * msg.angle_increment
+            
+            # restore if we're within the restoration range of any obstacle (this will most likely be the intruder)
+            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
+                print("RESTORING......")
+                self.mode_pub.publish("restoring")
+                return
 
             if (scan_range > msg.range_min) and (scan_range < msg.range_max):
                 # get the position in the ref frame of the robot
@@ -164,24 +158,11 @@ class Lidar_detect:
                     np.array([target_location["x"], target_location["y"], 0, 1])
                 )
 
-                #count = count + 1
-
                 x = int((new_vertex_np[0] - self.origin.position.x) / self.resolution)
                 y = int((new_vertex_np[1] - self.origin.position.y) / self.resolution)
 
-                # scan_range = msg.ranges[i] + .2
-
-                #print(x, y, self.grid[x][y])
+   
                 if self.grid[y][x] == 0:
-                    if not_printed == True:
-                        print("Start here")
-                        print(x, y)
-                        print(i)
-                        print(scan_range)
-                        not_printed = False
-                    count += 1
-                    #print(i)
-                    #print(scan_range)
                     x_max = x
                     y_max = y
                     max_count += 1
@@ -189,9 +170,6 @@ class Lidar_detect:
 
                 # If the x or y falls outside range, skip it.
                 if (x < len(self.grid[0])) and (y < len(self.grid)):
-
-                    #print("(x, y) is " + str((x, y)))
-                    ################################################################################################################################ See if we can rerun the opccupancy grid generator. It's finding obstacles somewhere it shouldn't
                     # If there is no obstacle in the grid but it has been detected here
                     if self.grid[y][x] != 100:
                         err_count = err_count + 1
@@ -201,51 +179,89 @@ class Lidar_detect:
                         error_point.y = new_vertex_np[1]
                         error_point.z = 0.5
                         error_array.append(error_point)
-
-                        #print(mapx, mapy)
-
-
-                        # An triangle of .01745 rad (msg.angle_increment) and a distance of 150 m has a base of ~2.6 cm
-                        # With an ankle of ~22 cm diameter, ankle = ~7 cm diameter, or about 3 increments
-                        # Any smaller and the obstacle is considered too far to chase
-                        #if err_count == 3:
-                        intruder_detected = True
-                        #while True:
-                        #    print()
-                        #    print(x, y, self.grid[y][x])
-                        #    print(mapx, mapy)
-
-
-                        # If multiple intruders detected, just go after the final one
-                        int_angle = scan_angle
-
-                    #else:
-                        #err_count = 0
-                #else:
-                    #print("(" + str(x) + ", " + str(y) + ") skipped")
-                #if (scan_angle > 45*math.pi/180):
-                #    print(self.robx, self.roby, self.yaw)
-                #    while True:
-
-                        #pass\
+                            
+                        # store the angle to the intruder
+                        direction_array.append(scan_angle)
 
         self.publish_errors(error_array)
 
         print("Error count:")
         print(err_count)
-        print(count)
         print(max_count)
-        #print(len(msg.ranges))
+        
+        # An triangle of .01745 rad (msg.angle_increment) and a distance of 150 m has a base of ~2.6 cm
+        # With an ankle of ~22 cm diameter, ankle = ~7 cm diameter, or about 3 increments
+        # Any smaller and the obstacle is considered too far to chase
+        if err_count >= 3:
+            intruder_detected = True
+        
+        # We will do a step to find the mean angle of the intruder
         if intruder_detected:
             self.intruder = True
+            
+            # we do a complicated step to deal with objects that span the -pi to pi gap
+            # We will calculate the mean angles for negative and positive numbers.
+            # If difference between negative_mean + 2*pi and positive_mean is less than positive_mean - negative_mean, we will use the 2*pi version
+            negative_sum = 0
+            negative_count = 0
+            positive_sum = 0
+            positive_count = 0
+            
+            for angle in error_array:
+                if angle < 0:
+                    negative_sum += angle
+                    negative_count += 1
+                else:
+                    positive_sum += angle
+                    positive_count += 1
+                    
+            mean_negative = None
+            mean_left = None
+            
+            if negative_count > 0:
+                mean_negative = negative_sum / negative_count
+                
+            if positive_count > 0:
+                mean_positive = positive_sum / positive_count
+                
+            # handles cases where the intruder is only on one side of the robot (common)
+            mean = None
+            if mean_positive is None:
+                mean = mean_negative
+            else if mean_negative is None:
+                mean = mean_positive
+            else:
+                # get the mean of all angles
+                mean = (negative_sum + positive_sum) / (negative_count + positive_count)
+                # if the 2*pi version is cheaper, use that version
+                if math.abs(mean_positive - mean_negative) > math.abs(mean_positive - (mean_negative + 2*math.pi)):
+                    mean = (negative_sum + 2*math.pi*negative_count) / (negative_count + positive_count)
+              
             # transform the angle back to the correct reference frame
-            self.intruder_angle = tf.transformations.euler_from_quaternion(rot)[2] + int_angle
+            intruder_angle = tf.transformations.euler_from_quaternion(rot)[2] + mean
+            
+            # rectifies the angle so that it's as close to the origin as possible
+            if intruder_angle >= 0:
+                intruder_angle = intruder_angle % (2 * math.pi)
+            else:
+                # do a pair of sign flips so we can safely run the modulo operation
+                intruder_angle = - ( (-intruder_angle) % (2 * math.pi) )
+                
+            if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
+                intruder_angle = intruder_angle - (2 * math.pi)
+            else if math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
+                intruder_angle = intruder_angle + (2 * math.pi)
+            
+            self.intruder_angle = intruder_angle
+            # publishes the intruder angle
+            float32_msg = Float32()
+            float32_msg.data = self.intruder_angle
+            self.float32_pub.publish(float32_msg)
             self.mode_published = "chaser"
         else:
             if self.prev_mode_pub == "chaser":
-                self.mode_published = "localizing"
+                self.mode_published = "restoring"
             else:
-
                 self.mode_published = "patrolling"
             self.intruder = False
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -314,14 +330,8 @@ class Lidar_detect:
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
             if self.msg != None:
-                self.laser_fx_simple(self.msg)
-                #self.laser_fx(self.msg)
-
-                #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
-
-                # float32_msg = Float32()
-                # float32_msg.data = self.intruder_angle
-                # self.float32_pub.publish(float32_msg)
+                if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
+                    self.laser_fx(self.msg)
 
                 if self.prev_mode_pub != self.mode_published:
                     mode_msg = String()

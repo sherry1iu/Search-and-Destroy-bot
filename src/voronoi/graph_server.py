@@ -57,43 +57,117 @@ class Server():
             pass # block until we have a map
 
         print("Computing the graph...")
-        d, f = ndimage.distance_transform_edt(self._map, return_indices=True)
+        # Compute the edt on a dilated map so the robot will never hit the wall
+        dilated = morphology.binary_dilation(self._map, morphology.square(40))
+        d, f = ndimage.distance_transform_edt(dilated, return_indices=True)
         mean = np.mean(d)
+        # Now create a thinned skeleton and extract the keypoints from it
         self._skel = morphology.skeletonize(d > mean*THIN)
         corners = corner_peaks(corner_harris(self._skel, k=CORNER_SENS), min_distance=1)
+        
 
         coords = []
         for c in corners:
           coords.append((c[1], c[0])) #x, y
+        print("Detected", len(coords), "key points")
 
         # First do a few traversal to find the neighboring feature nodes
-
         graph = self._add_nodes(coords)
         for i in range(10): # do this a few times
           self._add_neighbors(graph, coords)
 
+        ids, rev_ids = {}, {} # two dictionaries to help wrangle the nodes
+        self._set_ids(graph, ids, rev_ids)
+
+        self._make_graph_symmetrical(graph) # make sure every node's neighbors point to the node
+
+        pruned_graph = self._prune_graph(graph, 100)
+
+        self._add_neighbors(pruned_graph, coords) # this adds all the neighbors back because there's some bug in the pruning that removes all of them
+        self._set_ids(pruned_graph, ids, rev_ids)    # convert the raw coordinates added into ids
+        
+        # remove all the neighbors that aren't actually in the graph 
+        for node in pruned_graph:
+            to_remove = []
+            for neighbor in node["neighbors"]:
+                if not self._id_in_graph(neighbor, pruned_graph):
+                    to_remove.append(neighbor)
+            for item in to_remove:
+                node["neighbors"].remove(item)
+
+        for g in pruned_graph: # convert the neighbor sets to lists for JSON
+              g["neighbors"] = list(g["neighbors"])
+        return pruned_graph 
+                
+
+    def _id_in_graph(self, id, graph):
+        """
+        Search for an id in a graph
+        """
+        for n in graph:
+            if n["id"] == id:
+                return True
+        return False
+
+
+    def _set_ids(self, graph, ids, rev_ids):
         # Swap out the positions for the proper ids
-        ids = {}
         for node in graph:
           ids[(node["x"], node["y"])] = node["id"]
+        for node in graph:
+          rev_ids[node["id"]] = node
 
         for node in graph:
-          new_neighbors = []
+          new_neighbors = set() 
           for n in node["neighbors"]:
-            new_neighbors.append(ids[n])
+            new_neighbors.add(ids[n])
           node["neighbors"] = new_neighbors
 
         # Now make sure the graph is symmetrical
-
+    def _make_graph_symmetrical(self, graph):
         for i in range(len(graph)):
           for j in range(len(graph)):
             if i == j:
               continue
             node, other = graph[i], graph[j]
             if node["id"] in other["neighbors"] and other["id"] not in node["neighbors"]:
-              node["neighbors"].append(other["id"])
+              node["neighbors"].add(other["id"])
 
-        return graph
+    def _dist(self, x1, y1, x2, y2):
+        """
+        Euclidean Distance Helper
+        """
+        return ((x2-x1)**2 + (y2-y1)**2)**(1/2)
+
+    def _prune_graph(self, graph, thresh=100):
+      """
+      Removes nodes in the graph that are too close to their neighbors
+
+      :param graph: the graph to prune
+      :param thresh: the distance threshold to determine when to prune
+      :returns the pruned graph
+      """
+
+      to_remove  = set()
+      for node in graph:
+        if node["id"] in to_remove:
+          continue
+        for other in graph:
+          if node != other:
+            if self._dist(other["x"], other["y"], node["x"], node["y"]) < thresh : 
+              to_remove.add(other['id'])
+
+      for node in to_remove:
+        for neighbor in graph[node]["neighbors"]:
+          graph[neighbor]["neighbors"].remove(node)
+
+      new_graph = []
+      for i in range(len(graph)):
+        if i not in to_remove:
+          new_graph.append(graph[i])
+
+      return new_graph
+
 
     def _add_nodes(self, coords):
       graph = []
@@ -113,9 +187,6 @@ class Server():
         for node in graph:
             x, y = node["x"], node["y"]
             for neighbor in self.eight_neighbors((x, y), self._skel):
-                # TODO -- why is this sometimes None?
-              if not neighbor:
-                continue
               u, v = neighbor
               self._traverse(neighbor, node, coords)
 
@@ -129,7 +200,6 @@ class Server():
               if neighbor not in seen and neighbor is not None:
                 x, y = neighbor
                 seen.add(neighbor)
-                #TODO: some sort of overflow error here...
                 if self._skel[(y, x)] > 0:
                   q.append(neighbor)
                 if neighbor in coords and neighbor != (home["x"], home["y"]):
