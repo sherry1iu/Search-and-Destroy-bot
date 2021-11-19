@@ -115,6 +115,12 @@ class Chaser:
                 # Prepare for next iteration
                 self.prev_angle = self.intruder_angle
                 self.err_sum = self.err_sum + (self.intruder_angle - self.prev_angle)
+            
+            else:
+                # Reset
+                self.prev_angle = 0
+                self.err_sum = 0
+
 
 
 
