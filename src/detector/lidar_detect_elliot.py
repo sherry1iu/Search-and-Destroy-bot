@@ -125,17 +125,8 @@ class Lidar_detect:
     def laser_callback(self, msg):
         self.msg = msg
 
-    def laser_fx_simple(self, msg):
-        """"Function to set the robot to restoring mode if it gets within 0.15m of the target"""
-        for i in range(len(msg.ranges)):
-            scan_range = msg.ranges[i]
-            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
-                print("RESTORING......")
-                self.mode_pub.publish("restoring")
-                break
-
-
     def laser_fx(self, msg):
+        """A function that processes laser data to detect intruders."""
         (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
         t = tf.transformations.translation_matrix(trans)
         R = tf.transformations.quaternion_matrix(rot)
@@ -152,6 +143,12 @@ class Lidar_detect:
         for i in range(len(msg.ranges)):
             scan_range = msg.ranges[i]
             scan_angle = msg.angle_min + i * msg.angle_increment
+            
+            # restore if we're within the restoration range of any obstacle (this will most likely be the intruder)
+            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
+                print("RESTORING......")
+                self.mode_pub.publish("restoring")
+                return
 
             if (scan_range > msg.range_min) and (scan_range < msg.range_max):
                 # get the position in the ref frame of the robot
@@ -256,12 +253,15 @@ class Lidar_detect:
                 intruder_angle = intruder_angle + (2 * math.pi)
             
             self.intruder_angle = intruder_angle
+            # publishes the intruder angle
+            float32_msg = Float32()
+            float32_msg.data = self.intruder_angle
+            self.float32_pub.publish(float32_msg)
             self.mode_published = "chaser"
         else:
             if self.prev_mode_pub == "chaser":
-                self.mode_published = "localizing"
+                self.mode_published = "restoring"
             else:
-
                 self.mode_published = "patrolling"
             self.intruder = False
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -330,14 +330,8 @@ class Lidar_detect:
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
             if self.msg != None:
-                self.laser_fx_simple(self.msg)
-                #self.laser_fx(self.msg)
-
-                #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
-
-                # float32_msg = Float32()
-                # float32_msg.data = self.intruder_angle
-                # self.float32_pub.publish(float32_msg)
+                if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
+                    self.laser_fx(self.msg)
 
                 if self.prev_mode_pub != self.mode_published:
                     mode_msg = String()
