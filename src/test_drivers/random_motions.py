@@ -7,6 +7,7 @@
 # Import of python modules.
 import math # use of pi.
 import random
+import tf
 
 # import of relevant libraries.
 import rospy # module for ROS APIs
@@ -18,6 +19,7 @@ from sensor_msgs.msg import LaserScan # message type for scan
 # Topic names
 DEFAULT_CMD_VEL_TOPIC = 'cmd_vel'
 DEFAULT_SCAN_TOPIC = 'scan'
+DEFAULT_LASER_FRAME = 'laser'
 
 # Frequency at which the loop operates
 FREQUENCY = 10 #Hz.
@@ -30,8 +32,8 @@ ANGULAR_VELOCITY = math.pi/8 # rad/s
 MIN_THRESHOLD_DISTANCE = 0.5 # m, threshold distance, should be smaller than range_max
 
 # Field of view in radians that is checked in front of the robot (feel free to tune)
-MIN_SCAN_ANGLE_DEG = -45.0
-MAX_SCAN_ANGLE_DEG = +45.0
+MIN_SCAN_ANGLE_DEG = -30.0
+MAX_SCAN_ANGLE_DEG = +30.0
 MIN_ROTATION_ANGLE = -math.pi
 MAX_ROTATION_ANGLE = +math.pi
 
@@ -60,6 +62,7 @@ class RandomWalk():
 
         # Flag used to control the behavior of the robot.
         self._close_obstacle = False # Flag variable that is true if there is a close obstacle.
+        self.t = tf.TransformListener(True, cache_time=rospy.Duration(10))
 
     def move(self, linear_vel, angular_vel):
         """Send a velocity command (linear vel in m/s, angular vel in rad/s)."""
@@ -92,28 +95,32 @@ class RandomWalk():
         # 4 per degree.
         # print "Min: " + str(msg.angle_min) + ", Max: " + str(msg.angle_max)
         # print len(msg.ranges)
-        (trans, rot) = self.t.lookupTransform('base_link', self.laser_frame, rospy.Time(0))
+        (trans, rot) = self.t.lookupTransform('base_link', DEFAULT_LASER_FRAME, rospy.Time(0))
         scan_yaw = tf.transformations.euler_from_quaternion(rot)[2]
 
-        baseLink_T_laserFrame = t.dot(R)
-
         # rectify the scan angles to be in the laser reference frame
-        rect_scan_angle_deg = [self.scan_angle_deg[0] + scan_yaw, self.scan_angle_deg[1] + scan_yaw]
+        rect_scan_angle_rad = [self.scan_angle_deg[0] * math.pi / 180 + scan_yaw, self.scan_angle_deg[1] * math.pi / 180 + scan_yaw]
 
         # prevent the scan angles from exceeding the maximum or minimum angle bounds
-        for i in range(len(rect_scan_angle_deg)):
-            if rect_scan_angle_deg[i] < msg.angle_min:
-                rect_scan_angle_deg[i] = 2*math.pi + rect_scan_angle_deg[i]
-            if rect_scan_angle_deg[i] > msg.angle_max:
-                rect_scan_angle_deg[i] = rect_scan_angle_deg[i] - 2*math.pi
+        for i in range(len(rect_scan_angle_rad)):
+            if rect_scan_angle_rad[i] < msg.angle_min:
+                rect_scan_angle_rad[i] = 2*math.pi + rect_scan_angle_rad[i]
+            if rect_scan_angle_rad[i] > msg.angle_max:
+                rect_scan_angle_rad[i] = rect_scan_angle_rad[i] - 2*math.pi
 
-        min_scan_index = int((msg.angle_min + rect_scan_angle_deg[0]) / msg.angle_increment)
-        max_scan_index = int((msg.angle_max + rect_scan_angle_deg[1]) / msg.angle_increment)
+        min_scan_index = int((rect_scan_angle_rad[0] - msg.angle_min) / msg.angle_increment)
+        max_scan_index = int((rect_scan_angle_rad[1] - msg.angle_min) / msg.angle_increment)
 
-        for range in msg.ranges[int(min_scan_index) : int(max_scan_index)]:
-            if (range < self.min_threshold_distance):
-                _close_obstacle = True
-                break
+        if max_scan_index > min_scan_index:
+            for laser_range in msg.ranges[int(min_scan_index) : int(max_scan_index)]:
+                if (laser_range < self.min_threshold_distance):
+                    _close_obstacle = True
+                    break
+        else:
+            for laser_range in (msg.ranges[:int(max_scan_index)] + msg.ranges[int(min_scan_index):]):
+                if (laser_range < self.min_threshold_distance):
+                    _close_obstacle = True
+                    break
 
         self._close_obstacle = _close_obstacle
 

@@ -122,3 +122,12 @@ It will cause the robot to create a map from scan data and publish on the /map t
     <init_robot_y>0</init_robot_y>          <!-- y coordinate in meters, op$
 </plugin>
 ```
+
+## Comparing with Random Walk and A*
+Our method traverses the graph in 5min, 10sec
+
+You can run a random walk with
+```
+./src/test_drivers/random_motions.py 
+
+```
