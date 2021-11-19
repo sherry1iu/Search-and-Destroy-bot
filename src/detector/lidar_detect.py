@@ -198,7 +198,7 @@ class Lidar_detect:
             positive_sum = 0
             positive_count = 0
             
-            for angle in error_array:
+            for angle in direction_array:
                 if angle < 0:
                     negative_sum += angle
                     negative_count += 1
@@ -207,7 +207,7 @@ class Lidar_detect:
                     positive_count += 1
                     
             mean_negative = None
-            mean_left = None
+            mean_positive = None
             
             if negative_count > 0:
                 mean_negative = negative_sum / negative_count
@@ -225,7 +225,7 @@ class Lidar_detect:
                 # get the mean of all angles
                 mean = (negative_sum + positive_sum) / (negative_count + positive_count)
                 # if the 2*pi version is cheaper, use that version
-                if math.abs(mean_positive - mean_negative) > math.abs(mean_positive - (mean_negative + 2*math.pi)):
+                if abs(mean_positive - mean_negative) > abs(mean_positive - (mean_negative + 2*math.pi)):
                     mean = (negative_sum + 2*math.pi*negative_count) / (negative_count + positive_count)
               
             # transform the angle back to the correct reference frame
@@ -238,9 +238,9 @@ class Lidar_detect:
                 # do a pair of sign flips so we can safely run the modulo operation
                 intruder_angle = - ( (-intruder_angle) % (2 * math.pi) )
                 
-            if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
+            if abs(intruder_angle - (2 * math.pi)) < abs(intruder_angle):
                 intruder_angle = intruder_angle - (2 * math.pi)
-            else if math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
+            elif abs(intruder_angle + (2 * math.pi)) < abs(intruder_angle):
                 intruder_angle = intruder_angle + (2 * math.pi)
             
             self.intruder_angle = intruder_angle
