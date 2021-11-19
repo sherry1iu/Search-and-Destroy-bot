@@ -186,14 +186,16 @@ class Localizer():
                         for i in range(4):
                             sum_squared_errors += (msg.ranges[indices[i]] - self.distances[x][y][i]) ** 2
                         if sum_squared_errors <= self.error_threshold:
-                            self.possible_positions.append(Position(x, y, -angles[0]))
+                            corrected_angle = math.pi - angles[0]
+                            if corrected_angle > math.pi: corrected_angle -= 2 * math.pi
+                            self.possible_positions.append(Position(x, y, corrected_angle))
         else:
             # if possible positions have been previously computed, only choose among those
             for pos_i, position in enumerate(self.possible_positions):
                 # calculate new position robot must be in based on last rotation/translation
                 new_x = int(position.x + math.cos(position.theta) * self.last_translation)
                 new_y = int(position.y + math.sin(position.theta) * self.last_translation)
-                new_theta = position.theta + self.last_rotation
+                new_theta = position.theta + self.last_rotation + math.pi
                 if new_theta > math.pi: new_theta -= 2 * math.pi
 
                 # calculate forward, left, rear, and back scan angles
@@ -219,7 +221,9 @@ class Localizer():
                     # update new position
                     self.possible_positions[pos_i].x = new_x
                     self.possible_positions[pos_i].y = new_y
-                    self.possible_positions[pos_i].theta = new_theta
+                    corrected_theta = new_theta + math.pi
+                    if corrected_theta > math.pi: corrected_theta -= 2 * math.pi
+                    self.possible_positions[pos_i].theta = corrected_theta
 
         print("possible positions: ")
         for position in self.possible_positions:
