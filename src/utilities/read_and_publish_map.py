@@ -47,6 +47,9 @@ if __name__ == '__main__':
 while not rospy.is_shutdown():
         # Static map
         msg = OccupancyGrid()
+
+        msg.header.frame_id = info["header"]["frame_id"]
+
         msg.info.origin = Pose()
         msg.data = data
         msg.info.resolution = float(info["info"]["resolution"])
@@ -56,11 +59,11 @@ while not rospy.is_shutdown():
         msg.info.origin.position.x = x
         msg.info.origin.position.y = y
         msg.info.origin.position.z = z
-        x, y, z, w = info["info"]["origin"]["orientation"]["x"], info["info"]["origin"]["orientation"]["y"], info["info"]["origin"]["orientation"]["z"], info["info"]["origin"]["orientation"]["w"]
-        msg.info.origin.orientation.x = x
-        msg.info.origin.orientation.y = y
-        msg.info.origin.orientation.z = z
-        msg.info.origin.orientation.w = w
+        rot_x, rot_y, rot_z, rot_w = info["info"]["origin"]["orientation"]["x"], info["info"]["origin"]["orientation"]["y"], info["info"]["origin"]["orientation"]["z"], info["info"]["origin"]["orientation"]["w"]
+        msg.info.origin.orientation.x = rot_x
+        msg.info.origin.orientation.y = rot_y
+        msg.info.origin.orientation.z = rot_z
+        msg.info.origin.orientation.w = rot_w
 
         static_map_pub.publish(msg)
 
@@ -68,13 +71,6 @@ while not rospy.is_shutdown():
         # Blur the same map with a gaussian filter the map and publish
         msg.data = blurred_data
         blurred_map_pub.publish(msg)
-
-
-
-
-
-
-
 
         rate.sleep()
 
