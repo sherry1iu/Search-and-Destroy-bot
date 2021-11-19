@@ -119,6 +119,7 @@ class Lidar_detect:
     def laser_fx(self, msg):
         """A function that processes laser data to detect intruders."""
         (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
+        (base_trans, base_rot) = self.t.lookupTransform('base_link', self.laser_frame, rospy.Time(0))
         t = tf.transformations.translation_matrix(trans)
         R = tf.transformations.quaternion_matrix(rot)
 
@@ -176,10 +177,6 @@ class Lidar_detect:
 
         self.publish_errors(error_array)
 
-        print("Error count:")
-        print(err_count)
-        print(max_count)
-        
         # An triangle of .01745 rad (msg.angle_increment) and a distance of 150 m has a base of ~2.6 cm
         # With an ankle of ~22 cm diameter, ankle = ~7 cm diameter, or about 3 increments
         # Any smaller and the obstacle is considered too far to chase
@@ -198,7 +195,7 @@ class Lidar_detect:
             positive_sum = 0
             positive_count = 0
             
-            for angle in error_array:
+            for angle in direction_array:
                 if angle < 0:
                     negative_sum += angle
                     negative_count += 1
@@ -207,7 +204,7 @@ class Lidar_detect:
                     positive_count += 1
                     
             mean_negative = None
-            mean_left = None
+            mean_positive = None
             
             if negative_count > 0:
                 mean_negative = negative_sum / negative_count
@@ -225,11 +222,11 @@ class Lidar_detect:
                 # get the mean of all angles
                 mean = (negative_sum + positive_sum) / (negative_count + positive_count)
                 # if the 2*pi version is cheaper, use that version
-                if math.abs(mean_positive - mean_negative) > math.abs(mean_positive - (mean_negative + 2*math.pi)):
+                if abs(mean_positive - mean_negative) > abs(mean_positive - (mean_negative + 2*math.pi)):
                     mean = (negative_sum + 2*math.pi*negative_count) / (negative_count + positive_count)
               
             # transform the angle back to the correct reference frame
-            intruder_angle = tf.transformations.euler_from_quaternion(rot)[2] + mean
+            intruder_angle = tf.transformations.euler_from_quaternion(base_rot)[2] + mean
             
             # rectifies the angle so that it's as close to the origin as possible
             if intruder_angle >= 0:
@@ -238,15 +235,17 @@ class Lidar_detect:
                 # do a pair of sign flips so we can safely run the modulo operation
                 intruder_angle = - ( (-intruder_angle) % (2 * math.pi) )
                 
-            if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
+            if abs(intruder_angle - (2 * math.pi)) < abs(intruder_angle):
                 intruder_angle = intruder_angle - (2 * math.pi)
-            elif math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
+            elif abs(intruder_angle + (2 * math.pi)) < abs(intruder_angle):
                 intruder_angle = intruder_angle + (2 * math.pi)
             
             self.intruder_angle = intruder_angle
             # publishes the intruder angle
             float32_msg = Float32()
-            float32_msg.data = self.intruder_angle
+            # NOTE -- we flip the sign because the PID is designed backward (I think)
+            print(-intruder_angle)
+            float32_msg.data = -self.intruder_angle
             self.float32_pub.publish(float32_msg)
             self.mode_published = "chaser"
         else:
@@ -264,14 +263,6 @@ class Lidar_detect:
 
 
         #print(count)
-        print("finished")
-        print(self.mode_published)
-        print(self.intruder)
-        print(intruder_detected)
-
-
-
-
 
     def occugrid_callback(self, msg):
         "Index into this with [y][x]"
@@ -313,8 +304,8 @@ class Lidar_detect:
 
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             if self.msg != None:
-                if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
-                    self.laser_fx(self.msg)
+                #if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
+                self.laser_fx(self.msg)
 
                 if self.prev_mode_pub != self.mode_published:
                     mode_msg = String()

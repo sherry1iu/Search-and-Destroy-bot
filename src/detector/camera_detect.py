@@ -219,16 +219,14 @@ class Camera_detect:
                     
 
                 else:
-                    self.intruder_angle = 0
+                    self.intruder_angle = None
 
-                    #print(self.intruder_angle)
 
-            
-                print("Intruder angle: " + str(60*self.intruder_angle))
-
-                float32_msg = Float32()
-                float32_msg.data = self.intruder_angle
-                self.float32_pub.publish(float32_msg)
+                if self.intruder_angle is not None:
+                    print("Intruder angle: " + str(self.intruder_angle))
+                    float32_msg = Float32()
+                    float32_msg.data = self.intruder_angle
+                    self.float32_pub.publish(float32_msg)
 
                 rospy.sleep(1.0)
 
