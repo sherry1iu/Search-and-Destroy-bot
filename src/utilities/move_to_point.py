@@ -33,6 +33,7 @@ def run_movement_loop(movement_time, linear_vel, angular_vel, move_cmd_pub):
         rate.sleep()
     # stop when we've finished with the movement
     move(0, 0, move_cmd_pub)
+    rate.sleep()
 
 
 def rotate(angle_to_rotate, move_cmd_pub):

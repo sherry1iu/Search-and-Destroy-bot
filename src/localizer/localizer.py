@@ -158,6 +158,30 @@ class Localizer():
 
         print("built distances")
 
+    def correct_angle(self, angle):
+        corrected_angle = angle
+        if angle > math.pi:
+            corrected_angle -= 2 * math.pi
+        elif angle < -math.pi:
+            corrected_angle += 2 * math.pi
+        return corrected_angle
+
+    def forward_to_orientation(self, forward_angle):
+        """Converts given forward angle to robot's angle of orientation"""
+        if forward_angle < 0:
+            return -(math.pi / 2 + forward_angle)
+        if forward_angle <= math.pi / 2:
+            return math.pi / 2 - forward_angle
+        return 3 / 2 * math.pi - forward_angle
+
+    def orientation_to_forward(self, orientation):
+        """Converts given forward angle to robot's angle of orientation"""
+        if abs(orientation) <= math.pi / 2:
+            return -(math.pi / 2 + orientation)
+        if orientation < 0:
+            return math.pi / 2 - forward_angle
+        return 3 / 2 * math.pi - forward_angle
+
     def laser_callback(self, msg):
         # print(self.state)
         if self.mode is not "initializing" or self.state != fsm.SCAN: return
@@ -170,7 +194,7 @@ class Localizer():
             # if no possible positions have been computed yet, go over all grid squares and every posssible orientation
 
             self.possible_positions = []
-            for forward_angle_index in range(min_index, max_index + 1, (max_index + 1 - min_index) / 10):
+            for forward_angle_index in range(min_index, max_index + 1, (max_index + 1 - min_index) / 36):
                 # angles and indices of those angles in the order [forward, left, back, right]
                 angles = [forward_angle_index * msg.angle_increment + msg.angle_min, 0, 0, 0]
                 indices = [forward_angle_index, 0, 0, 0]
@@ -186,20 +210,18 @@ class Localizer():
                         for i in range(4):
                             sum_squared_errors += (msg.ranges[indices[i]] - self.distances[x][y][i]) ** 2
                         if sum_squared_errors <= self.error_threshold:
-                            corrected_angle = math.pi - angles[0]
-                            if corrected_angle > math.pi: corrected_angle -= 2 * math.pi
-                            self.possible_positions.append(Position(x, y, corrected_angle))
+                            self.possible_positions.append(Position(x, y, self.correct_angle(self.forward_to_orientation(angles[0]))))
         else:
             # if possible positions have been previously computed, only choose among those
             for pos_i, position in enumerate(self.possible_positions):
                 # calculate new position robot must be in based on last rotation/translation
                 new_x = int(position.x + math.cos(position.theta) * self.last_translation)
                 new_y = int(position.y + math.sin(position.theta) * self.last_translation)
-                new_theta = position.theta + self.last_rotation + math.pi
-                if new_theta > math.pi: new_theta -= 2 * math.pi
+                new_theta = self.correct_angle(position.theta + self.last_rotation)
+                new_fwd_angle = self.correct_angle(self.orientation_to_forward(new_theta))
 
                 # calculate forward, left, rear, and back scan angles
-                angles = [-new_theta, 0, 0, 0]
+                angles = [new_fwd_angle, 0, 0, 0]
                 for i in range(1, 4):
                     angles[i] = angles[0] + i * math.pi / 2
                     if angles[i] > math.pi: angles[i] -= 2 * math.pi
@@ -221,9 +243,7 @@ class Localizer():
                     # update new position
                     self.possible_positions[pos_i].x = new_x
                     self.possible_positions[pos_i].y = new_y
-                    corrected_theta = new_theta + math.pi
-                    if corrected_theta > math.pi: corrected_theta -= 2 * math.pi
-                    self.possible_positions[pos_i].theta = corrected_theta
+                    self.possible_positions[pos_i].theta = new_theta
 
         print("possible positions: ")
         for position in self.possible_positions:
