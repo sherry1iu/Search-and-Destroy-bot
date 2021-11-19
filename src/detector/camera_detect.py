@@ -187,7 +187,7 @@ class Camera_detect:
         msg = rospy.wait_for_message(DEFAULT_CAMERA_TOPIC, CompressedImage)
         while not rospy.is_shutdown():
 
-             if self.obstacle:
+            if self.obstacle:
 
                 fraction_location = float(self.intruder_mid) / self.width
                 
