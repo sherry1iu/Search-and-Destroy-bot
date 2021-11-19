@@ -4,9 +4,9 @@ import math
 from enum import Enum
 
 import rospy # module for ROS APIs
-from geometry_msgs.msg import Twist # message type for cmd_vel
-from std_msgs.msg import Float32
-from std_msgs.msg import String                             # Mode
+from geometry_msgs.msg import Twist     # Cmd_vel
+from std_msgs.msg import Float32        # Angle
+from std_msgs.msg import String         # Mode
 
 
 import sys
@@ -27,19 +27,14 @@ KI = -.5
 KD = .7
 
 
-#BOOL_TOPIC = "intruder"
 MODE_TOPIC = "mode"
 
 FLOAT32_TOPIC = "angle"
 
-"""
-The angle of the camera is about 90 degrees in front of it. So then if we found the midpoint we can do 90/location of midpoint
-Use this to control PID
-"""
+
 class FSM(Enum):
     ROTATE_CALC = 1
     ROTATE = 2
-print("Chaser imported")
 
 class Chaser:
     def __init__(self, angvel = ANGULAR_VELOCITY, linvel = LINEAR_VELOCITY, \
@@ -89,7 +84,6 @@ class Chaser:
 
 
     def spin(self):
-        print("91 Ran")
         while not rospy.is_shutdown():
             if self.mode == "chaser":
                 msg = rospy.wait_for_message(FLOAT32_TOPIC, Float32)
@@ -110,11 +104,17 @@ class Chaser:
                 self.angular_velocity = p_part + i_part + d_part
 
                 # Move
-                move(self.linear_velocity, self.angular_velocity, self.cmd_pub)##########################################################################################
+                move(self.linear_velocity, self.angular_velocity, self.cmd_pub)
 
                 # Prepare for next iteration
                 self.prev_angle = self.intruder_angle
                 self.err_sum = self.err_sum + (self.intruder_angle - self.prev_angle)
+            
+            else:
+                # Reset
+                self.prev_angle = 0
+                self.err_sum = 0
+
 
 
 
@@ -122,17 +122,17 @@ class Chaser:
 
 def main():
     # # 1st. initialization of node.
-    print("122 Ran")
 
     rospy.init_node("node")    
+    
     # # Wait for setup
-    print("126 Ran")
     rospy.sleep(2)
-    print("Ran 125")
+
     chaser = Chaser()
     
     try:
         chaser.spin()
+
     except rospy.ROSInterruptException:
         rospy.logerr("ROS node interrupted.")
     
