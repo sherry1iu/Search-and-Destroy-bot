@@ -57,7 +57,7 @@ then select /camera/rgb/image_raw from the dropdown
 ```
 you will be able to see image data.
 
-Now run (in separate terminals)
+Now run (in separate terminals: you will need 7 for just the nodes. All commands should be run from the root-level directory of this repository)
 Publish the map
 ```
 ./src/utilities/read_and_publish_map.py
@@ -75,6 +75,12 @@ Run the camera module
 cd ./src/detector
 ./camera_detect.py
 ```
+Run the chaser module
+```
+cd ./src/chaser
+./chaser.py
+```
+
 Run the patroller module
 ```
 cd src/patroller

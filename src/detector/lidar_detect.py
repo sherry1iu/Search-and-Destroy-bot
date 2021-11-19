@@ -51,7 +51,7 @@ class Lidar_detect:
 
         # Mode pub/sub
         self.mode_pub = rospy.Publisher(MODE_TOPIC, String, queue_size=1)
-        self.mode_sub = rospy.Subscriberf(MODE_TOPIC, String, self.mode_callback, queue_size=1)
+        self.mode_sub = rospy.Subscriber(MODE_TOPIC, String, self.mode_callback, queue_size=1)
 
         # Angle publisher
         self.float32_pub = rospy.Publisher(FLOAT32_TOPIC, Float32, queue_size = 1)
@@ -240,7 +240,7 @@ class Lidar_detect:
                 
             if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
                 intruder_angle = intruder_angle - (2 * math.pi)
-            else if math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
+            elif math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
                 intruder_angle = intruder_angle + (2 * math.pi)
             
             self.intruder_angle = intruder_angle
