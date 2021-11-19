@@ -112,38 +112,7 @@ class Localizer():
         if self.distances == None:
             self.distances = [[[0 for x in range(4)] for x in range(self.grid.height)] for x in range(self.grid.width)]
 
-        ITERATOR = 0
-        # for x in range(0, self.grid.width):
-        #     for y in range(0, self.grid.height):
-        #         if self.grid.cell_at(x, y) == 100: continue     # continue if wall
-
-        #         self.distances[x][y][0] = 0
-        #         for y_2 in range(y + 1, self.grid.height):
-        #             if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-        #             self.distances[x][y][0] += self.grid.resolution
-        #             ITERATOR += 1
-
-        #         self.distances[x][y][2] = 0
-        #         for y_2 in range(y - 1, -1, -1):
-        #             if self.grid.cell_at(x, y_2) == 100: break  # stop counting if we hit a wall
-        #             self.distances[x][y][2] += self.grid.resolution
-        #             ITERATOR += 1
-
-        #         self.distances[x][y][3] = 0
-        #         for x_2 in range(x + 1, self.grid.width):
-        #             if self.grid.cell_at(x_2, y) == 100: break
-        #             self.distances[x][y][3] += self.grid.resolution
-        #             ITERATOR += 1
-
-        #         self.distances[x][y][1] = 0
-        #         for x_2 in range(x - 1, -1, -1):
-        #             if self.grid.cell_at(x_2, y) == 100: break
-        #             self.distances[x][y][1] += self.grid.resolution
-        #             ITERATOR += 1
-
-        #         if (ITERATOR % 10000 == 0):
-        #             print(ITERATOR)
-
+        # left distances
         distance_to_wall = 0
         for y in range(self.grid.height):
             for x in range(self.grid.width):
@@ -153,10 +122,8 @@ class Localizer():
                     distance_to_wall = 0
                 else:
                     distance_to_wall += self.grid.resolution
-                ITERATOR += 1
-                if (ITERATOR % 10000 == 0):
-                    print(ITERATOR)
 
+        # right distances
         distance_to_wall = 0
         for y in range(self.grid.height):
             for x in range(self.grid.width - 1, -1, -1):
@@ -166,10 +133,8 @@ class Localizer():
                     distance_to_wall = 0
                 else:
                     distance_to_wall += self.grid.resolution
-                ITERATOR += 1
-                if (ITERATOR % 10000 == 0):
-                    print(ITERATOR)
 
+        # forward distances
         distance_to_wall = 0
         for x in range(self.grid.width):
             for y in range(self.grid.height):
@@ -179,10 +144,8 @@ class Localizer():
                     distance_to_wall = 0
                 else:
                     distance_to_wall += self.grid.resolution
-                ITERATOR += 1
-                if (ITERATOR % 10000 == 0):
-                    print(ITERATOR)
 
+        # back distances
         distance_to_wall = 0
         for x in range(self.grid.width):
             for y in range(self.grid.height - 1, -1, -1):
@@ -192,9 +155,6 @@ class Localizer():
                     distance_to_wall = 0
                 else:
                     distance_to_wall += self.grid.resolution
-                ITERATOR += 1
-                if (ITERATOR % 10000 == 0):
-                    print(ITERATOR)
 
         print("built distances")
 
@@ -210,7 +170,7 @@ class Localizer():
             # if no possible positions have been computed yet, go over all grid squares and every posssible orientation
 
             self.possible_positions = []
-            for forward_angle_index in range(min_index, max_index + 1):
+            for forward_angle_index in range(min_index, max_index + 1, (max_index + 1 - min_index) / 10):
                 # angles and indices of those angles in the order [forward, left, back, right]
                 angles = [forward_angle_index * msg.angle_increment + msg.angle_min, 0, 0, 0]
                 indices = [forward_angle_index, 0, 0, 0]
@@ -220,8 +180,8 @@ class Localizer():
                     if angles[i] > math.pi: angles[i] -= 2 * math.pi
                     indices[i] = int((angles[i] - msg.angle_min) / msg.angle_increment)
 
-                for x in range(0, self.grid.width):
-                    for y in range(0, self.grid.height):
+                for x in range(0, self.grid.width, 10):
+                    for y in range(0, self.grid.height, 10):
                         sum_squared_errors = 0
                         for i in range(4):
                             sum_squared_errors += (msg.ranges[indices[i]] - self.distances[x][y][i]) ** 2
