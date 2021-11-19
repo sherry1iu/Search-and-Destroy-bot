@@ -18,7 +18,7 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import PointCloud
 
 from std_msgs.msg import Float32
-from visualization_msgs.msg import Marker
+#from visualization_msgs.msg import Marker
 FREQUENCY = 10
 
 DEFAULT_OCCUGRID_TOPIC = "/blur_map"
@@ -38,7 +38,7 @@ RESTORE_RANGE = 0.0
 MAXDIST = 150
 
 class Lidar_detect:
-    def __init__(self, is_live):   # Delete these parameters once we're testing wiht topics.
+    def __init__(self, is_live):  
 
         # Occupancy grid subscriber
         self.occu_sub = rospy.Subscriber(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid, self.occugrid_callback, queue_size=1)
@@ -60,7 +60,7 @@ class Lidar_detect:
         self.intruder = False
         self.intruder_angle = 0
 
-        self.marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size = 100)
+        #self.marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size = 100)
         rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
         rospy.wait_for_message(DEFAULT_ODOM_TOPIC, Odometry)
 
@@ -198,7 +198,7 @@ class Lidar_detect:
             positive_sum = 0
             positive_count = 0
             
-            for angle in direction_array:
+            for angle in error_array:
                 if angle < 0:
                     negative_sum += angle
                     negative_count += 1
@@ -207,7 +207,7 @@ class Lidar_detect:
                     positive_count += 1
                     
             mean_negative = None
-            mean_positive = None
+            mean_left = None
             
             if negative_count > 0:
                 mean_negative = negative_sum / negative_count
@@ -225,7 +225,7 @@ class Lidar_detect:
                 # get the mean of all angles
                 mean = (negative_sum + positive_sum) / (negative_count + positive_count)
                 # if the 2*pi version is cheaper, use that version
-                if abs(mean_positive - mean_negative) > abs(mean_positive - (mean_negative + 2*math.pi)):
+                if math.abs(mean_positive - mean_negative) > math.abs(mean_positive - (mean_negative + 2*math.pi)):
                     mean = (negative_sum + 2*math.pi*negative_count) / (negative_count + positive_count)
               
             # transform the angle back to the correct reference frame
@@ -238,9 +238,9 @@ class Lidar_detect:
                 # do a pair of sign flips so we can safely run the modulo operation
                 intruder_angle = - ( (-intruder_angle) % (2 * math.pi) )
                 
-            if abs(intruder_angle - (2 * math.pi)) < abs(intruder_angle):
+            if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
                 intruder_angle = intruder_angle - (2 * math.pi)
-            elif abs(intruder_angle + (2 * math.pi)) < abs(intruder_angle):
+            else if math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
                 intruder_angle = intruder_angle + (2 * math.pi)
             
             self.intruder_angle = intruder_angle
