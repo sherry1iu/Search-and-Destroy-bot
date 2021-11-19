@@ -102,7 +102,7 @@ class Localizer():
         if self.mode is not "initializing" or self.state != fsm.UNINIT: return
         self.grid = Grid(msg.data, msg.info.width, msg.info.height, msg.info.resolution)
         print("created grid")
-        self.error_threshold = (2 * self.grid.resolution) ** 2
+        self.error_threshold = (30 * self.grid.resolution) ** 2
         self.build_distances()
         self.state = fsm.SCAN
         print(self.state)
