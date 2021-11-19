@@ -1,18 +1,24 @@
+#!/usr/bin/env python
+
 print("LIDAR has been imported.")
 
-import math 
+import math
 import numpy as np
 import tf
 from enum import Enum
 
 import rospy # module for ROS APIs
 
+from geometry_msgs.msg import Point                         # For visualization of error/object locations
+from sensor_msgs.msg import PointCloud                      # For visualization of error/object locations
 from sensor_msgs.msg import LaserScan                       # LIDAR
 from nav_msgs.msg import OccupancyGrid                      # Previously made occupancy grid
 from geometry_msgs.msg import PoseWithCovarianceStamped     # AMCL pose
 from tf.msg import tfMessage                                # AMCL transformation
 from std_msgs.msg import String                             # Mode
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point
+from sensor_msgs.msg import PointCloud
 
 #from std_msgsf.msg import Bool
 from std_msgs.msg import Float32
@@ -29,9 +35,12 @@ AMCL_POSE_TOPIC = "amcl_pose"
 FLOAT32_TOPIC = "angle"
 MODE_TOPIC = "mode"
 
+# the range at which to restore back onto the graph
+RESTORE_RANGE = 0.0
+
 
 class Lidar_detect:
-    def __init__(self):   # Delete these parameters once we're testing wiht topics.
+    def __init__(self, is_live):   # Delete these parameters once we're testing wiht topics.
 
         self.test_callbacks = ["mode", "laser", "occugrid", "pose", "odom"]
 
@@ -60,17 +69,24 @@ class Lidar_detect:
         self.marker_pub = rospy.Publisher("visualization_marker", Marker, queue_size = 100)
         rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
         rospy.wait_for_message(DEFAULT_ODOM_TOPIC, Odometry)
-        '''
+
+        self.error_pub = rospy.Publisher('errors', PointCloud, queue_size=10)
+
+        if is_live:
+            self.subscriber = rospy.Subscriber("scan", LaserScan, self.laser_callback)
+            self.laser_frame = "laser"
+        else:
+            self.subscriber = rospy.Subscriber("base_scan", LaserScan, self.laser_callback)
+            self.laser_frame = "base_laser_link"
+
+
         # Initialization
         self.resolution = None
-
-        self.robx = None
-        self.roby = None
-        self.yaw = None
-        '''
+        self.origin = None
 
         self.mode_recieved = None
-        self.mode_published = "patrolling"
+        self.mode_published = "restoring"
+        self.prev_mode_pub = "restoring"
         self.prev_mode_pub = "None"
 
         self.msg = None
@@ -94,6 +110,13 @@ class Lidar_detect:
         quaternion = (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w)
         self.odom_rot = tf.transformations.euler_from_quaternion(quaternion)[2]
 
+    def publish_errors(self, point_array):
+        """Publishes all the error points detected by the LIDAR"""
+        cloud = PointCloud()
+        cloud.header.frame_id = "map"
+        cloud.points = point_array
+        self.error_pub.publish(cloud)
+
 
     def mode_callback(self, msg):
         self.mode_recieved = msg.data
@@ -103,162 +126,142 @@ class Lidar_detect:
         self.msg = msg
 
     def laser_fx(self, msg):
-        print("Laser started")
-        self.data_ready = False
-        self.prev_mode_pub = self.mode_pub
-        # Create transformation matrix for map_T_robot by using the robot's pose
+        """A function that processes laser data to detect intruders."""
+        (trans, rot) = self.t.lookupTransform('odom', self.laser_frame, rospy.Time(0))
+        t = tf.transformations.translation_matrix(trans)
+        R = tf.transformations.quaternion_matrix(rot)
 
-
-        cos = math.cos(self.yaw)
-        sin = math.sin(self.yaw)
-
-        #rob_T_map = np.array([[cos, -1 * sin, 0, self.robx],\
-        #                      [sin, cos, 0, self.roby],\
-        #                      [0, 0, 1, 0],\
-        #                      [0, 0, 0, 1]])
-
-        self.t.waitForTransform("map", "laser", msg.header.stamp, rospy.Duration(4))
-        pos, rot = self.t.lookupTransform("map", "laser", msg.header.stamp)
-        rob_T_map = tf.transformations.compose_matrix(angles=tf.transformations.euler_from_quaternion(rot), translate=pos)
-        print(rob_T_map)
-
-        map_T_rob = np.linalg.inv(rob_T_map)
-        #print(self.robx, self.roby, self.yaw)
-        #print(rob_T_map)
-        #print(map_T_rob)
+        odom_T_laserFrame = t.dot(R)
 
         err_count = 0
         intruder_detected = False
-
-        count = 0
         max_count = 0
-        not_printed = True
-        # For each item in the ranges list
+        error_array = []
+        direction_array = []
+
+        # iterate over the laser data; detect anamolies.
         for i in range(len(msg.ranges)):
+            scan_range = msg.ranges[i]
+            scan_angle = msg.angle_min + i * msg.angle_increment
+            
+            # restore if we're within the restoration range of any obstacle (this will most likely be the intruder)
+            if scan_range < RESTORE_RANGE and self.mode_recieved == "chaser":
+                print("RESTORING......")
+                self.mode_pub.publish("restoring")
+                return
 
-            # Current values
-            curr_range = msg.ranges[i]
-            curr_angle = msg.angle_min + (i * msg.angle_increment)
+            if (scan_range > msg.range_min) and (scan_range < msg.range_max):
+                # get the position in the ref frame of the robot
+                target_location = {"x": scan_range * math.cos(scan_angle), "y": scan_range * math.sin(scan_angle)}
+                # get the position in the odom ref frame
+                new_vertex_np = odom_T_laserFrame.dot(
+                    np.array([target_location["x"], target_location["y"], 0, 1])
+                )
 
-            # If the laser is in range
-            if (curr_range > msg.range_min) and (curr_range < msg.range_max):
+                x = int((new_vertex_np[0] - self.origin.position.x) / self.resolution)
+                y = int((new_vertex_np[1] - self.origin.position.y) / self.resolution)
 
-                #count = count + 1
-
-
-                # x, y in robot reference frame
-                distx = curr_range * math.cos(curr_angle)
-                disty = curr_range * math.sin(curr_angle)
-
-                '''
-                if (curr_angle > 45*math.pi/180):
-                    print(distx, disty)
-                    print(curr_range)
-                    print(math.sqrt((distx)**2 + (disty)**2))
-                '''
-
-
-                # Transform robot to map
-                map_pts = map_T_rob.dot(np.array([distx, disty, 0, 1]))
-                mapx = map_pts[0]
-                mapy = map_pts[1]
-
-
-            #if (curr_angle > 45*math.pi/180):
-                curr_range = msg.ranges[i] + .2
-                curr_angle = msg.angle_min + (i * msg.angle_increment)
-
-                distx = curr_range * math.cos(curr_angle)
-                disty = curr_range * math.sin(curr_angle)
-                #print(9000000000000000)
-                #print(curr_range, curr_angle)
-                #print(distx, disty)
-                #print(mapx, mapy)
-                #print("aaaa")
-
-
-
-                # Point in grid reference frame (map point in grid units)
-                x = int((mapx)/self.resolution) + 500
-                y = int((mapy)/self.resolution) + 500
-
-
-
-                #print(x, y, self.grid[x][y])
+   
                 if self.grid[y][x] == 0:
-                    if not_printed == True:
-                        print("Start here")
-                        print(x, y)
-                        print(i)
-                        print(curr_range)
-                        not_printed = False
-                    count += 1
-                    #print(i)
-                    #print(curr_range)
-                    i_max = i
                     x_max = x
                     y_max = y
                     max_count += 1
 
 
-
-
-
-
-
-                
-
                 # If the x or y falls outside range, skip it.
                 if (x < len(self.grid[0])) and (y < len(self.grid)):
-
-                    #print("(x, y) is " + str((x, y)))
-                    ################################################################################################################################ See if we can rerun the opccupancy grid generator. It's finding obstacles somewhere it shouldn't
                     # If there is no obstacle in the grid but it has been detected here
                     if self.grid[y][x] != 100:
                         err_count = err_count + 1
 
-                        #print(mapx, mapy)
+                        error_point = Point()
+                        error_point.x = new_vertex_np[0] 
+                        error_point.y = new_vertex_np[1]
+                        error_point.z = 0.5
+                        error_array.append(error_point)
+                            
+                        # store the angle to the intruder
+                        direction_array.append(scan_angle)
 
+        self.publish_errors(error_array)
 
-                        # An triangle of .01745 rad (msg.angle_increment) and a distance of 150 m has a base of ~2.6 cm
-                        # With an ankle of ~22 cm diameter, ankle = ~7 cm diameter, or about 3 increments
-                        # Any smaller and the obstacle is considered too far to chase
-                        #if err_count == 3:
-                        intruder_detected = True
-                        #while True:
-                        #    print()
-                        #    print(x, y, self.grid[y][x])
-                        #    print(mapx, mapy)
-
-
-                        # If multiple intruders detected, just go after the final one
-                        int_angle = curr_angle
-                        print("We have found this many obs:" + str(err_count))
-
-                    #else:
-                        #err_count = 0
-                #else:
-                    #print("(" + str(x) + ", " + str(y) + ") skipped")
-                print(11111111111)
-                #if (curr_angle > 45*math.pi/180):
-                #    print(self.robx, self.roby, self.yaw)
-                #    while True:
-
-                        #pass
-
-        print(count)
+        print("Error count:")
+        print(err_count)
         print(max_count)
-        print(i_max, x_max, y_max)
-        #print(len(msg.ranges))
+        
+        # An triangle of .01745 rad (msg.angle_increment) and a distance of 150 m has a base of ~2.6 cm
+        # With an ankle of ~22 cm diameter, ankle = ~7 cm diameter, or about 3 increments
+        # Any smaller and the obstacle is considered too far to chase
+        if err_count >= 3:
+            intruder_detected = True
+        
+        # We will do a step to find the mean angle of the intruder
         if intruder_detected:
             self.intruder = True
-            self.intruder_angle = int_angle
+            
+            # we do a complicated step to deal with objects that span the -pi to pi gap
+            # We will calculate the mean angles for negative and positive numbers.
+            # If difference between negative_mean + 2*pi and positive_mean is less than positive_mean - negative_mean, we will use the 2*pi version
+            negative_sum = 0
+            negative_count = 0
+            positive_sum = 0
+            positive_count = 0
+            
+            for angle in error_array:
+                if angle < 0:
+                    negative_sum += angle
+                    negative_count += 1
+                else:
+                    positive_sum += angle
+                    positive_count += 1
+                    
+            mean_negative = None
+            mean_left = None
+            
+            if negative_count > 0:
+                mean_negative = negative_sum / negative_count
+                
+            if positive_count > 0:
+                mean_positive = positive_sum / positive_count
+                
+            # handles cases where the intruder is only on one side of the robot (common)
+            mean = None
+            if mean_positive is None:
+                mean = mean_negative
+            elif mean_negative is None:
+                mean = mean_positive
+            else:
+                # get the mean of all angles
+                mean = (negative_sum + positive_sum) / (negative_count + positive_count)
+                # if the 2*pi version is cheaper, use that version
+                if math.abs(mean_positive - mean_negative) > math.abs(mean_positive - (mean_negative + 2*math.pi)):
+                    mean = (negative_sum + 2*math.pi*negative_count) / (negative_count + positive_count)
+              
+            # transform the angle back to the correct reference frame
+            intruder_angle = tf.transformations.euler_from_quaternion(rot)[2] + mean
+            
+            # rectifies the angle so that it's as close to the origin as possible
+            if intruder_angle >= 0:
+                intruder_angle = intruder_angle % (2 * math.pi)
+            else:
+                # do a pair of sign flips so we can safely run the modulo operation
+                intruder_angle = - ( (-intruder_angle) % (2 * math.pi) )
+                
+            if math.abs(intruder_angle - (2 * math.pi)) < math.abs(intruder_angle):
+                intruder_angle = intruder_angle - (2 * math.pi)
+            else if math.abs(intruder_angle + (2 * math.pi)) < math.abs(intruder_angle):
+                intruder_angle = intruder_angle + (2 * math.pi)
+            
+            self.intruder_angle = intruder_angle
+            # publishes the intruder angle
+            float32_msg = Float32()
+            float32_msg.data = self.intruder_angle
+            self.float32_pub.publish(float32_msg)
             self.mode_published = "chaser"
         else:
             if self.prev_mode_pub == "chaser":
-                self.mode_published = "localizing"
+                self.mode_published = "restoring"
             else:
-
                 self.mode_published = "patrolling"
             self.intruder = False
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -267,11 +270,11 @@ class Lidar_detect:
             # Then we'd get rid of int_angle and intruder_detected
             # But until then we should keep them to prevent early variables from being detected.
 
-        
+
 
         #print(count)
         print("finished")
-        prin(self.mode_published)
+        print(self.mode_published)
         print(self.intruder)
         print(intruder_detected)
         #while True:
@@ -279,18 +282,15 @@ class Lidar_detect:
         #    self.marker_pub.publish(marker_msg)
 
 
-
-
-
         self.test_callbacks[1] = "1"
 
 
 
     def occugrid_callback(self, msg):
-
         "Index into this with [y][x]"
         self.grid = np.reshape(msg.data, (msg.info.height, msg.info.width))
         self.resolution = msg.info.resolution
+        self.origin = msg.info.origin
         self.test_callbacks[2] = "1"
 
 
@@ -330,17 +330,14 @@ class Lidar_detect:
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             #msg = rospy.wait_for_message(DEFAULT_SCAN_TOPIC, LaserScan)
             if self.msg != None:
-                self.laser_fx(self.msg)
+                if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
+                    self.laser_fx(self.msg)
 
-                #if self.mode_recieved == "patrolling"          Reimplement once camera is figured out.
-
-                float32_msg = Float32()
-                float32_msg.data = self.intruder_angle
-                self.float32_pub.publish(float32_msg)
-
-                mode_msg = String()
-                mode_msg.data = self.mode_published
-                self.mode_pub.publish(mode_msg)
+                if self.prev_mode_pub != self.mode_published:
+                    mode_msg = String()
+                    mode_msg.data = self.mode_published
+                    self.mode_pub.publish(mode_msg)
+                    self.prev_mode_pub = self.mode_published
 
                 #print("Angle, modes published, recieved" + str((self.intruder_angle, self.mode_published, self.mode_recieved)) + str(self.test_callbacks))
 
@@ -356,7 +353,7 @@ def main():
     rospy.sleep(2)
 
     # Initialization of the class
-    ld_dt = Lidar_detect()
+    ld_dt = Lidar_detect(is_live=True)
 
     # Robot publishes map.
     try:

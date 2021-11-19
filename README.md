@@ -68,7 +68,7 @@ Set up the graph server
 ```
 Run the LIDAR module
 ```
-./src/detector/lidar_detect_elliot.py
+./src/detector/lidar_detect.py
 ```
 Run the camera module
 ```
