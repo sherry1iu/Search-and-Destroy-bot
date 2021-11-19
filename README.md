@@ -131,3 +131,4 @@ You can run a random walk with
 ./src/test_drivers/random_motions.py 
 
 ```
+The random walk took 15 mins, 30 seconds, and failed to explore the center of the map and the room at the bottom.
