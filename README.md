@@ -14,13 +14,15 @@ module.
 
 Generates a topological map of the environment from an occupancy grid. See the [module-specific README](./src/voronoi/README.md) for details.
 
-### patroller
+### Patroller
 
 ### Camera
 
 ### Chaser
 
-### restorer
+### Restorer
+
+### Utilities 
 
 ## Environment Setup (Gazebo):
 If you have a working setup with Gazebo, you can do the following steps to view image data
