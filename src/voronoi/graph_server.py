@@ -7,18 +7,18 @@ from collections import deque
 import numpy as np
 
 # Image processing Imports
-from scipy import ndimage
-from skimage import morphology
+from scipy import ndimage # for EDT
+from skimage import morphology # for binary_dilation, skeletonization
 from skimage.feature import corner_harris, corner_peaks
 
 # ROS Imports
 import rospy
-from nav_msgs.msg import OccupancyGrid          # http://docs.ros.org/en/melodic/api/nav_msgs/html/msg/OccupancyGrid.html
-from std_srvs.srv import Trigger, TriggerResponse
+from nav_msgs.msg import OccupancyGrid              # http://docs.ros.org/en/melodic/api/nav_msgs/html/msg/OccupancyGrid.html
+from std_srvs.srv import Trigger, TriggerResponse   # http://docs.ros.org/en/melodic/api/std_srvs/html/srv/Trigger.html
 
 DEFAULT_MAP_TOPIC    = "map"
 DEFAULT_SERVICE      = "graph"
-CORNER_SENS          = 0.025
+CORNER_SENS          = 0.025 # Tune these values for the map!
 THIN                 = 0.5
 
 class Server():
@@ -111,7 +111,10 @@ class Server():
 
 
     def _set_ids(self, graph, ids, rev_ids):
-        # Swap out the positions for the proper ids
+        """
+        When the nodes are added, their neighbor lists have no ids,
+        this function adds them
+        """
         for node in graph:
           ids[(node["x"], node["y"])] = node["id"]
         for node in graph:
@@ -123,8 +126,11 @@ class Server():
             new_neighbors.add(ids[n])
           node["neighbors"] = new_neighbors
 
-        # Now make sure the graph is symmetrical
     def _make_graph_symmetrical(self, graph):
+        """
+        Make sure every node's neighbors points at the node
+        """
+
         for i in range(len(graph)):
           for j in range(len(graph)):
             if i == j:
@@ -156,11 +162,11 @@ class Server():
           if node != other:
             if self._dist(other["x"], other["y"], node["x"], node["y"]) < thresh : 
               to_remove.add(other['id'])
-
+      # We use a removal list so the neighbors set doesn't change during iteration
       for node in to_remove:
         for neighbor in graph[node]["neighbors"]:
           graph[neighbor]["neighbors"].remove(node)
-
+      # Compile these into a new graph...
       new_graph = []
       for i in range(len(graph)):
         if i not in to_remove:
@@ -170,6 +176,9 @@ class Server():
 
 
     def _add_nodes(self, coords):
+      """
+      Compiles the nodes in coords into a list of dictionaries that hold their info
+      """
       graph = []
       for c in coords:
         x, y = c
@@ -191,6 +200,18 @@ class Server():
               self._traverse(neighbor, node, coords)
 
     def _traverse(self, start, home, coords):
+        """
+        Do a depth first traversal of the skeleton.
+        This approach treats every nonzero pixel of the skeleton as a node to expand.
+        However, the nodes that are important are the ones marked in the coords array.
+        The function traverses the skeleton until it hits a node in the coords array, then
+        it links the node in coords to the last node from coords it saw. 
+        This way the nodes get connected to their neighbors nearest to them on the skeleton.
+
+        :param start: the first node in the traversal
+        :param home: the origin node for which we are connecting the neighbors of
+        :param coords: the list of nodes that are of interest (list of x,y tuples)
+        """
           seen = set()
           q = deque()
           q.append(start)
