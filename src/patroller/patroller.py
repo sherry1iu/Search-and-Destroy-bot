@@ -37,8 +37,8 @@ class Patroller:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            # self.mode = "initializing"
-            self.mode = "patrolling"
+            self.mode = "initializing"
+            # self.mode = "patrolling"
             self.is_on_graph = False
 
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)

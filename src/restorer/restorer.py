@@ -39,8 +39,8 @@ class Restorer:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            # self.mode = "initializing"
-            self.mode = "restoring"
+            self.mode = "initializing"
+            # self.mode = "restoring"
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
             self.raw_graph_string = None
 

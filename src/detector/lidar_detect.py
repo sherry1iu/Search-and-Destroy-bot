@@ -304,8 +304,8 @@ class Lidar_detect:
 
             msg = rospy.wait_for_message(DEFAULT_OCCUGRID_TOPIC, OccupancyGrid)
             if self.msg != None:
-                #if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
-                self.laser_fx(self.msg)
+                if self.mode_recieved == "patrolling" or self.mode_recieved == "chaser":
+                    self.laser_fx(self.msg)
 
                 if self.prev_mode_pub != self.mode_published:
                     mode_msg = String()
