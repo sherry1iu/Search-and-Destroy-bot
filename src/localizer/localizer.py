@@ -253,7 +253,7 @@ class Localizer():
         if len(self.possible_positions) <= 2:
             self.state = fsm.STOP
             self.final_pose = Position(self.possible_positions[0].x * self.grid.resolution, self.possible_positions[0].y * self.grid.resolution, self.possible_positions[0].theta)
-            self.mode_publisher("restoring")
+            self.mode_publisher.publish("restoring")
             return
 
         # else, move the robot: translate if there is space ahead, else rotate to make space

@@ -37,8 +37,8 @@ class Patroller:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            # self.mode = "initializing"
-            self.mode = "restoring"
+            self.mode = "initializing"
+            # self.mode = "restoring"
             self.is_on_graph = False
 
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     rospy.init_node("patroller")
 
     # 2nd. Creation of the class with relevant publishers/subscribers.
-    patroller = Patroller(is_live=False, is_test_mode=True)
+    patroller = Patroller(is_live=False, is_test_mode=False)
 
     # 3rd loop.
     patroller.main()

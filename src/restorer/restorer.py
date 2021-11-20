@@ -187,7 +187,7 @@ if __name__ == "__main__":
     rospy.init_node("restorer")
 
     # 2nd. Creation of the class with relevant publishers/subscribers.
-    restorer = Restorer(is_live=False, is_test_mode=True)
+    restorer = Restorer(is_live=False, is_test_mode=False)
 
     # 3rd loop.
     restorer.main()

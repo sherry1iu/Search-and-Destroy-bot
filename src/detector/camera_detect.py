@@ -76,7 +76,7 @@ class Camera_detect:
 
         self.intruder_mid = WIDTH/2
         
-        self.mode_recieved = "patrolling"
+        self.mode_recieved = "initializing"
 
 
         self.obstacle = False

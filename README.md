@@ -91,6 +91,10 @@ Run the restorer module
 cd src/restorer
 ./restorer.py
 ```
+Set up the localizer
+```
+./src/localizer/localizer.py
+```
 
 ## Modifying the World:
 Once you've inserted objects into the world you launched with

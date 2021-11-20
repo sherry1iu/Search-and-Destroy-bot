@@ -79,7 +79,7 @@ class Lidar_detect:
         self.origin = None
 
         self.mode_recieved = None
-        self.mode_published = "restoring"
+        self.mode_published = "initializing"
         self.prev_mode_pub = "None"
 
         self.msg = None
