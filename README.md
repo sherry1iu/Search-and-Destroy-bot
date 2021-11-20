@@ -16,13 +16,29 @@ Generates a topological map of the environment from an occupancy grid. See the [
 
 ### Patroller
 
+Transforms the topological map into a partol route and dispatched the robot on it.
+
 ### Camera
+
+Looks for intruders to chase.
 
 ### Chaser
 
+Takes the robot out of patrol mode and uses a PD controller to chase after intruders.
+
 ### Restorer
 
+Returns the robot to the patrol route using breadth first search based local planner.
+
+### Localization
+
+Determines the robot position on the map, initialtes the state-machine.
+
 ### Utilities 
+
+* Map publishing
+* Translating JSON-packed topological maps
+* Implementations of BFS, Dijkstra's algorithm
 
 ## Environment Setup (Gazebo):
 If you have a working setup with Gazebo, you can do the following steps to view image data
@@ -31,6 +47,7 @@ and similar:
 Pip Setup:
 ```
 pip install scipy
+pip install numpy
 pip install scikit-image
 ```
 
