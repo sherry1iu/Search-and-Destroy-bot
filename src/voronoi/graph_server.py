@@ -16,7 +16,7 @@ import rospy
 from nav_msgs.msg import OccupancyGrid              # http://docs.ros.org/en/melodic/api/nav_msgs/html/msg/OccupancyGrid.html
 from std_srvs.srv import Trigger, TriggerResponse   # http://docs.ros.org/en/melodic/api/std_srvs/html/srv/Trigger.html
 
-DEFAULT_MAP_TOPIC    = "map"
+DEFAULT_MAP_TOPIC    = "static_map"
 DEFAULT_SERVICE      = "graph"
 CORNER_SENS          = 0.025 # Tune these values for the map!
 THIN                 = 0.5
@@ -212,20 +212,20 @@ class Server():
         :param home: the origin node for which we are connecting the neighbors of
         :param coords: the list of nodes that are of interest (list of x,y tuples)
         """
-          seen = set()
-          q = deque()
-          q.append(start)
-          while len(q) > 0:
-            curr = q.pop()
-            for neighbor in self.eight_neighbors(curr, self._skel):
-              if neighbor not in seen and neighbor is not None:
-                x, y = neighbor
-                seen.add(neighbor)
-                if self._skel[(y, x)] > 0:
-                  q.append(neighbor)
-                if neighbor in coords and neighbor != (home["x"], home["y"]):
-                  home["neighbors"].add(neighbor)
-                  return
+        seen = set()
+        q = deque()
+        q.append(start)
+        while len(q) > 0:
+          curr = q.pop()
+          for neighbor in self.eight_neighbors(curr, self._skel):
+            if neighbor not in seen and neighbor is not None:
+              x, y = neighbor
+              seen.add(neighbor)
+              if self._skel[(y, x)] > 0:
+                q.append(neighbor)
+              if neighbor in coords and neighbor != (home["x"], home["y"]):
+                home["neighbors"].add(neighbor)
+                return
 
 
     def eight_neighbors(self, c, map):
