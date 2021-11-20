@@ -37,8 +37,8 @@ class Patroller:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            self.mode = "initializing"
-            # self.mode = "restoring"
+            # self.mode = "initializing"
+            self.mode = "restoring"
             self.is_on_graph = False
 
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
@@ -165,7 +165,7 @@ class Patroller:
                 # if we haven't arrived on the graph yet, we will use the Restorer to get us there
                 if not self.is_on_graph:
                     print("We are not on the graph. Restoring...")
-                    self.mode_publisher("restoring")
+                    self.mode_publisher.publish("restoring")
                     self.is_on_graph = True
 
                 if self.should_plan is True:

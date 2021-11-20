@@ -39,7 +39,8 @@ class Restorer:
             # NOTE -- if in testing, also run ../utilities/tf_map_publisher
 
         else:
-            self.mode = "initializing"
+            # self.mode = "initializing"
+            self.mode = "restoring"
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)
             self.raw_graph_string = None
 
@@ -111,16 +112,17 @@ class Restorer:
 
         trans, rot = get_current_position("map", "base_link", self.transform_listener)
         node_array = []
+
         for key in self.node_dictionary:
             node_array.append({
-                "x": int(float(self.node_dictionary[key]["x"]) / self.grid_msg.info.resolution),
-                "y": int(float(self.node_dictionary[key]["y"]) / self.grid_msg.info.resolution)
+                "x": int(float(self.node_dictionary[key]["x"] - self.grid_msg.info.origin.position.x) / self.grid_msg.info.resolution),
+                "y": int(float(self.node_dictionary[key]["y"] - self.grid_msg.info.origin.position.y) / self.grid_msg.info.resolution)
             })
 
         bfs = BFS(
             {
-                "x": int(float(trans[0]) / self.grid_msg.info.resolution),
-                "y": int(float(trans[1]) / self.grid_msg.info.resolution)
+                "x": int(float(trans[0] - self.grid_msg.info.origin.position.x) / self.grid_msg.info.resolution),
+                "y": int(float(trans[1] - self.grid_msg.info.origin.position.y) / self.grid_msg.info.resolution)
             },
             node_array,
             self.grid_arrays
@@ -135,6 +137,8 @@ class Restorer:
                 "y": path_points_to_visit[i]["y"] * self.grid_msg.info.resolution,
             }
 
+        print(path_points_to_visit)
+
         self.path_points_to_visit = path_points_to_visit
         self.should_plan = False
 
@@ -142,7 +146,7 @@ class Restorer:
         """Executes the plan for returning to the graph"""
         print("Restoring back to the graph")
 
-        if len(self.path_points_to_visit) is 0:
+        if len(self.path_points_to_visit) == 0:
             # if we've run out of points, we are now on the graph
             self.publish_mode("patrolling")
             print("Patrolling now...")

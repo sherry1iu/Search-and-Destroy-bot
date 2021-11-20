@@ -25,6 +25,7 @@ class Server():
     def __init__(self):
         self._map = None
         self._map_resolution = None
+        self._map_offset = None
         self._skel = None
         self._count = 0
 
@@ -36,6 +37,7 @@ class Server():
         width = int(msg.info.width)
         height = int(msg.info.height)
         self._map_resolution = float(msg.info.resolution)
+        self._map_offset = (msg.info.origin.position.x, msg.info.origin.position.y)
 
         grid = np.reshape(msg.data, (height, width))
         self._map = grid
@@ -59,7 +61,9 @@ class Server():
         print("Computing the graph...")
         # Compute the edt on a dilated map so the robot will never hit the wall
         dilated = morphology.binary_dilation(self._map, morphology.square(40))
-        d, f = ndimage.distance_transform_edt(dilated, return_indices=True)
+        dmap = np.bitwise_not(dilated)
+        dmap[dmap<0] = 100
+        d, f = ndimage.distance_transform_edt(dmap, return_indices=True)
         mean = np.mean(d)
         # Now create a thinned skeleton and extract the keypoints from it
         self._skel = morphology.skeletonize(d > mean*THIN)
@@ -105,7 +109,14 @@ class Server():
                 node["neighbors"].remove(item)
 
         for g in pruned_graph: # convert the neighbor sets to lists for JSON
-              g["neighbors"] = list(g["neighbors"])
+            x, y = g["x"], g["y"]
+        
+            nx = x*self._map_resolution + self._map_offset[0]
+            ny = y*self._map_resolution + self._map_offset[1]
+            g["neighbors"] = list(g["neighbors"])
+            g["x"] = nx 
+            g["y"] = ny 
+        print(self._map_resolution, self._map_offset)
         return pruned_graph 
                 
 
