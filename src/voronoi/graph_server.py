@@ -81,13 +81,19 @@ class Server():
 
         self._make_graph_symmetrical(graph) # make sure every node's neighbors point to the node
 
-        print(len(graph))
-        print(graph)
         pruned_graph = self._prune_graph(graph, 100)
-        print(len(pruned_graph))
+        #print(pruned_graph)
+        #print("\n\n")
+        nodes_of_interest = []
+        for node in pruned_graph:
+            nodes_of_interest.append((node["x"], node["y"]))
 
-        self._add_neighbors(pruned_graph, coords) # this adds all the neighbors back because there's some bug in the pruning that removes all of them
+        self._add_neighbors(pruned_graph, nodes_of_interest) # this adds all the neighbors back because there's some bug in the pruning that removes all of them
+
         self._set_ids(pruned_graph, ids, rev_ids)    # convert the raw coordinates added into ids
+        self._make_graph_symmetrical(pruned_graph) # make sure every node's neighbors point to the node
+        #print(len(pruned_graph))
+        #print("\n\n")
         
         # remove all the neighbors that aren't actually in the graph 
         for node in pruned_graph:
@@ -126,7 +132,8 @@ class Server():
         for node in graph:
           new_neighbors = set() 
           for n in node["neighbors"]:
-            new_neighbors.add(ids[n])
+              if type(n) is tuple:
+                new_neighbors.add(ids[n])
           node["neighbors"] = new_neighbors
 
     def _make_graph_symmetrical(self, graph):
@@ -164,13 +171,12 @@ class Server():
           continue
         for other in graph:
           if node != other:
-            print(self._dist(other["x"], other["y"], node["x"], node["y"]))
             if self._dist(other["x"], other["y"], node["x"], node["y"]) < thresh : 
               to_remove.add(other['id'])
       # We use a removal list so the neighbors set doesn't change during iteration
-      for node in to_remove:
-        for neighbor in graph[node]["neighbors"]:
-          graph[neighbor]["neighbors"].remove(node)
+      #for node in to_remove:
+      #  for neighbor in graph[node]["neighbors"]:
+      #    graph[node]["neighbors"].remove(neighbor)
       # Compile these into a new graph...
       new_graph = []
       for i in range(len(graph)):
