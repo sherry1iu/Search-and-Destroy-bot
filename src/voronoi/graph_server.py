@@ -81,7 +81,10 @@ class Server():
 
         self._make_graph_symmetrical(graph) # make sure every node's neighbors point to the node
 
+        print(len(graph))
+        print(graph)
         pruned_graph = self._prune_graph(graph, 100)
+        print(len(pruned_graph))
 
         self._add_neighbors(pruned_graph, coords) # this adds all the neighbors back because there's some bug in the pruning that removes all of them
         self._set_ids(pruned_graph, ids, rev_ids)    # convert the raw coordinates added into ids
@@ -143,7 +146,8 @@ class Server():
         """
         Euclidean Distance Helper
         """
-        return ((x2-x1)**2 + (y2-y1)**2)**(1/2)
+        return np.linalg.norm(np.array((x1, y1)) - np.array((x2, y2)))
+        #return ((x2-x1)**2 + (y2-y1)**2)**(1/2)
 
     def _prune_graph(self, graph, thresh=100):
       """
@@ -160,6 +164,7 @@ class Server():
           continue
         for other in graph:
           if node != other:
+            print(self._dist(other["x"], other["y"], node["x"], node["y"]))
             if self._dist(other["x"], other["y"], node["x"], node["y"]) < thresh : 
               to_remove.add(other['id'])
       # We use a removal list so the neighbors set doesn't change during iteration
