@@ -44,7 +44,8 @@ class DijkstraSearch:
     def expand_node(self, node):
         """Expand a node"""
         for node_id in self.edge_dictionary[node.node_id]:
-            self.add_child_node(node_id, node)
+            if node_id not in self.expanded_nodes:
+                self.add_child_node(node_id, node)
 
     def get_minimum(self):
         """

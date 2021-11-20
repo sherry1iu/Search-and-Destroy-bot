@@ -133,8 +133,8 @@ class Restorer:
         # Restores the x-y resolution, rather than the grid resolution
         for i in range(len(path_points_to_visit)):
             path_points_to_visit[i] = {
-                "x": path_points_to_visit[i]["x"] * self.grid_msg.info.resolution,
-                "y": path_points_to_visit[i]["y"] * self.grid_msg.info.resolution,
+                "x": path_points_to_visit[i]["x"] * self.grid_msg.info.resolution + self.grid_msg.info.origin.position.x,
+                "y": path_points_to_visit[i]["y"] * self.grid_msg.info.resolution + self.grid_msg.info.origin.position.y,
             }
 
         print(path_points_to_visit)

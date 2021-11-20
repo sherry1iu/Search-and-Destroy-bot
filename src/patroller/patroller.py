@@ -38,7 +38,7 @@ class Patroller:
 
         else:
             # self.mode = "initializing"
-            self.mode = "restoring"
+            self.mode = "patrolling"
             self.is_on_graph = False
 
             self._graph_service_proxy = rospy.ServiceProxy("graph", Trigger)

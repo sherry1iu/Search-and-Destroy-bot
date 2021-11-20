@@ -189,7 +189,10 @@ class ChinesePostmanProblem:
         # finds the cheapest world where all given nodes are in pairs
         cheapest_pairs = self.find_cheapest_pairs(edge_to_cost_dictionary, [], {}, 0)[1]
 
-        edge_dict_copy = edge_dictionary.copy()
+        edge_dict_copy = {} 
+
+        for key in edge_dictionary:
+            edge_dict_copy[key] = edge_dictionary[key].copy()
         # creates fake nodes so that we can find a cycle
         self.create_fake_nodes(
             node_pairs=cheapest_pairs,
