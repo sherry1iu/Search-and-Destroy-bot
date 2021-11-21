@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 import sys
-#print(sys.path)
+
 
 import rospy # module for ROS APIs
 from sensor_msgs.msg import CompressedImage
@@ -21,11 +21,10 @@ from std_msgs.msg import String                             # Mode
 sys.path.append('../../')
 
 from src.utilities.move_to_point import *
-#from src.utilities.move_to_point import *
+
 
 DEFAULT_CAMERA_TOPIC = "/camera/rgb/image_raw/compressed"
-#DEFAULT_CAMERA_TOPIC = "/image_publisher_1636692042732699800/image_raw/compressed"
-#DEFAULT_CAMERA_TOPIC = "/image_publisher_1636973670731858300/image_raw/compressed"
+
 
 
 FLOAT32_TOPIC = "angle"
@@ -48,17 +47,7 @@ ORANGE_DULLEST = [59, 26, 11]
 HEIGHT = 480
 WIDTH = 640
 
-'''
-Before starting! Open these links.
-https://docs.ros.org/en/hydro/api/cv_bridge/html/python/index.html
-https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
-https://towardsdatascience.com/building-a-color-recognizer-in-python-4783dfc72456
-https://www.pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/
-https://stackoverflow.com/questions/22588146/tracking-white-color-using-python-opencv
-https://www.circuitmix.com/detecting-and-tracking-colours-using-python/
-https://www.geeksforgeeks.org/python-opencv-imdecode-function/
 
-'''
 
 
 class Camera_detect:  
@@ -110,7 +99,7 @@ class Camera_detect:
             # Turns message into a numpy array
         np_arr = np.fromstring(msg.data, np.uint8)
         self.testvar = 1
-        #print("Started Camera callback")
+
 
         # Turn the np image into a cv2 image (image array)
         BGR_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -145,39 +134,22 @@ class Camera_detect:
             rightmost = -1
             leftmost = float('inf')
 
-            zerocount = 0
-            two55c = 0
-            othercount = 0
+
             for i in range(len(sum(mask))):
-                # Sum of mask is 
-                #print(sum(mask[i]))
+
                 if sum(mask)[i] > 20:
                     if i > rightmost:
                         rightmost = i
                     if i < leftmost:
                         leftmost = i
-                if sum(mask)[i] == 0:
-                    zerocount += 1
-                elif sum(mask)[i] == 255:
-                    two55c += 1
-                    
-                else:
-                    othercount += 1
-                    #print(sum(mask)[i])
-            ######################################################
+
             self.intruder_mid = (rightmost + leftmost)/2
-            print(self.intruder_mid)
-            '''
-            print(182)
-            print(leftmost, rightmost)
-            print(zerocount, two55c, othercount)
-            '''
+
         else:
             self.obstacle = False
 
-        #self.obstacle = False########################################
         self.data_ready = True
-        #print("End of callback")
+
             
 
 
