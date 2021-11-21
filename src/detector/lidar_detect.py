@@ -254,15 +254,7 @@ class Lidar_detect:
             else:
                 self.mode_published = "patrolling"
             self.intruder = False
-            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # Later I may decide to add a "data ready", once the actual messages are set up.
-            # In that case, then we can just change the intruder_detected straight inside the loop
-            # Then we'd get rid of int_angle and intruder_detected
-            # But until then we should keep them to prevent early variables from being detected.
 
-
-
-        #print(count)
 
     def occugrid_callback(self, msg):
         "Index into this with [y][x]"
